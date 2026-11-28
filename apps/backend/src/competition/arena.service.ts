@@ -610,19 +610,19 @@ export class ArenaService {
       (question.title === 'Bug Hunt: Distributed Token Bucket Rate Limiter' ? OFFICIAL_ROUND2_PLANTED_BUGS : []);
 
     const rubric = (question.rubric as any) || {};
-    const isOfficialTokenBucket = question.title?.includes('Token Bucket');
+    const isOfficialRound2 = question.title?.includes('Student Result Analyzer') || question.title?.includes('Token Bucket');
     const configuredQuestionLang = (question.language || '').toLowerCase();
     const defaultRound2Lang = ROUND2_SUPPORTED_LANGUAGES.includes(configuredQuestionLang as any)
       ? configuredQuestionLang
       : 'c';
-    const supportedLanguages = isOfficialTokenBucket
+    const supportedLanguages = isOfficialRound2
       ? ROUND2_SUPPORTED_LANGUAGES
       : Array.isArray(rubric.supportedLanguages) && rubric.supportedLanguages.length > 0
       ? rubric.supportedLanguages.filter((l: string) => ROUND2_SUPPORTED_LANGUAGES.includes(l.toLowerCase() as any))
       : [defaultRound2Lang];
 
     const languageStarterCodes: Record<string, string> = {
-      ...(isOfficialTokenBucket
+      ...(isOfficialRound2
         ? {
             c: OFFICIAL_ROUND2_LANGUAGE_STARTERS.c,
             cpp: OFFICIAL_ROUND2_LANGUAGE_STARTERS.cpp,
@@ -653,7 +653,7 @@ export class ArenaService {
     }
 
     const hasPerBugVerification =
-      isOfficialTokenBucket ||
+      isOfficialRound2 ||
       plantedBugs.some((b: any) => Array.isArray(b.repairValidationTestIndices) && b.repairValidationTestIndices.length > 0);
 
     // Fetch team's already identified bugs for this question
@@ -686,14 +686,14 @@ export class ArenaService {
       identifiedBugs: teamReports.map((r) => {
         const defaultLangBugs =
           (rubric.languagePlantedBugs && rubric.languagePlantedBugs[defaultRound2Lang]) ||
-          (isOfficialTokenBucket && OFFICIAL_ROUND2_LANGUAGE_BUGS[defaultRound2Lang as keyof typeof OFFICIAL_ROUND2_LANGUAGE_BUGS]) ||
+          (isOfficialRound2 && OFFICIAL_ROUND2_LANGUAGE_BUGS[defaultRound2Lang as keyof typeof OFFICIAL_ROUND2_LANGUAGE_BUGS]) ||
           plantedBugs;
         const bugDef = defaultLangBugs.find((b: any) => b.key === r.bugKey) || plantedBugs.find((b: any) => b.key === r.bugKey);
         const languageLocations: Record<string, { lineNumber: number; expression: string }> = {};
         for (const lang of supportedLanguages) {
           const langBugs =
             (rubric.languagePlantedBugs && rubric.languagePlantedBugs[lang]) ||
-            (isOfficialTokenBucket && OFFICIAL_ROUND2_LANGUAGE_BUGS[lang as keyof typeof OFFICIAL_ROUND2_LANGUAGE_BUGS]);
+            (isOfficialRound2 && OFFICIAL_ROUND2_LANGUAGE_BUGS[lang as keyof typeof OFFICIAL_ROUND2_LANGUAGE_BUGS]);
           const matched = Array.isArray(langBugs) ? langBugs.find((b: any) => b.key === r.bugKey) : null;
           if (matched) {
             languageLocations[lang] = { lineNumber: matched.lineNumber, expression: matched.expression };
@@ -741,7 +741,7 @@ export class ArenaService {
     }
 
     const rubric = (question.rubric as any) || {};
-    const isOfficialTokenBucket = question.title?.includes('Token Bucket');
+    const isOfficialRound2 = question.title?.includes('Student Result Analyzer') || question.title?.includes('Token Bucket');
     const defaultLang = ROUND2_SUPPORTED_LANGUAGES.includes((question.language || '').toLowerCase() as any)
       ? (question.language || '').toLowerCase()
       : 'c';
@@ -753,7 +753,7 @@ export class ArenaService {
     }
     const langPlantedBugs =
       (rubric.languagePlantedBugs && rubric.languagePlantedBugs[reqLang]) ||
-      (isOfficialTokenBucket && OFFICIAL_ROUND2_LANGUAGE_BUGS[reqLang]) ||
+      (isOfficialRound2 && OFFICIAL_ROUND2_LANGUAGE_BUGS[reqLang]) ||
       null;
 
     const plantedBugs = langPlantedBugs ||
@@ -778,7 +778,7 @@ export class ArenaService {
         for (const lang of ROUND2_SUPPORTED_LANGUAGES) {
           const langBugs =
             (rubric.languagePlantedBugs && rubric.languagePlantedBugs[lang]) ||
-            (isOfficialTokenBucket && OFFICIAL_ROUND2_LANGUAGE_BUGS[lang]);
+            (isOfficialRound2 && OFFICIAL_ROUND2_LANGUAGE_BUGS[lang]);
           const matched = Array.isArray(langBugs) ? langBugs.find((b: any) => b.key === r.bugKey) : null;
           if (matched) {
             languageLocations[lang] = { lineNumber: matched.lineNumber, expression: matched.expression };
@@ -1145,9 +1145,9 @@ export class ArenaService {
     // Real-execution repair verification (never exposes hidden test cases)
     const plantedBugs = (question.plantedBugs as any[]) ||
       (question.title?.includes('Token Bucket') ? OFFICIAL_ROUND2_PLANTED_BUGS : []);
-    const isOfficialTokenBucket = question.title?.includes('Token Bucket');
+    const isOfficialRound2 = question.title?.includes('Student Result Analyzer') || question.title?.includes('Token Bucket');
     const hasPerBugVerification =
-      isOfficialTokenBucket ||
+      isOfficialRound2 ||
       plantedBugs.some(
         (b: any) =>
           Array.isArray(b.repairValidationTestIndices) && b.repairValidationTestIndices.length > 0,
@@ -1186,7 +1186,7 @@ export class ArenaService {
       }
 
       // Evaluate per-bug verification checks via Judge0
-      if (isOfficialTokenBucket) {
+      if (isOfficialRound2) {
         const checkResults = await Promise.all(
           OFFICIAL_ROUND2_VERIFICATION_TESTS.map(async (vt) => {
             try {

@@ -80,6 +80,7 @@ export async function apiClient<T>(
   try {
     response = await fetch(url, {
       credentials: 'include', // Always send HttpOnly session cookies
+      cache: 'no-store', // Never serve stale cached competition/question data
       ...options,
       headers,
     });

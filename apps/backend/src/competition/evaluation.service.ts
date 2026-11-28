@@ -275,7 +275,7 @@ export class EvaluationService {
       (roundNum === 1
         ? 'MCQ Arena (15 Questions)'
         : roundNum === 2
-        ? 'Bug Hunt: Distributed Token Bucket Rate Limiter'
+        ? 'Bug Hunt: Student Result Analyzer'
         : 'Final Coding');
 
     const questionDescription =
@@ -283,7 +283,7 @@ export class EvaluationService {
       (roundNum === 1
         ? 'Round 1 Multiple Choice Question Arena (15 questions assessing core computer science and programming fundamentals).'
         : roundNum === 2
-        ? 'Distributed Token Bucket Rate Limiter Debugging & Code Repair challenge.'
+        ? 'Student Result Analyzer Debugging & Code Repair challenge.'
         : null);
 
     return {

@@ -17,8 +17,12 @@ import { ROUND1_QUESTIONS_CONFIG } from './data/round1-questions.config';
 import { ROUND3_QUESTIONS_CONFIG } from './data/round3-questions.config';
 import {
   ROUND2_SUPPORTED_LANGUAGES,
+  OFFICIAL_ROUND2_TITLE,
+  OFFICIAL_ROUND2_DESCRIPTION,
   OFFICIAL_ROUND2_LANGUAGE_STARTERS,
   OFFICIAL_ROUND2_LANGUAGE_BUGS,
+  OFFICIAL_ROUND2_SAMPLE_TESTS,
+  OFFICIAL_ROUND2_HIDDEN_TESTS,
 } from './data/round2-multilang.config';
 
 export const OFFICIAL_ROUND2_JS_STARTER = `/**
@@ -636,14 +640,15 @@ export class QuestionsService implements OnModuleInit {
 
     let createdCount = 0;
 
-    // Check if questions already exist — run idempotent Round 1 sync without duplicating
+    // Check if questions already exist — run idempotent Round 1 & Round 2 sync without duplicating
     const existingCount = await this.prisma.question.count();
     if (existingCount > 0) {
       await this.syncOfficialRound1Questions();
-      this.logger.log(`Questions already exist (${existingCount}). Verified official Round 1 bank idempotently.`);
+      await this.syncOfficialRound2Question();
+      this.logger.log(`Questions already exist (${existingCount}). Verified official Round 1 & Round 2 banks idempotently.`);
       return {
         seededCount: 0,
-        message: `Official Round 1 Technical Quiz verified (15 active questions, 30 marks). Existing records preserved.`,
+        message: `Official Round 1 (15 MCQs) & Round 2 (Student Result Analyzer) verified. Existing records preserved.`,
       };
     }
 
@@ -666,61 +671,27 @@ export class QuestionsService implements OnModuleInit {
       createdCount++;
     }
 
-    // ROUND 2: BUG HUNT ARENA (100 Marks Total)
+    // ROUND 2: BUG HUNT ARENA — STUDENT RESULT ANALYZER (100 Marks Total)
     const bugHuntProblem = {
       orderNumber: 1,
-      title: 'Bug Hunt: Distributed Token Bucket Rate Limiter',
-      description: `### Challenge Overview
-Your team has inherited a high-throughput Token Bucket Rate Limiter intended for mission-critical microservice APIs.
-The system is failing under stress testing: it allows illegal request bursts, calculates incorrect token refills after idle intervals, and suffers from integer division truncation.
-
-### Your Objectives:
-1. Identify all logic and algorithmic defects in the provided starter code.
-2. Fix the token calculation, capacity enforcement, and thread-safety / state boundaries.
-3. Ensure every test case passes within the specified sub-millisecond execution constraints.
-
-### Rubric Breakdown:
-- **Bug Identification & Isolation:** 20 Marks
-- **Test Correctness & Passing Suite:** 50 Marks
-- **Boundary & Edge Case Handling:** 20 Marks
-- **Code Cleanliness & Documentation:** 10 Marks`,
-      language: 'javascript',
-      starterCode: OFFICIAL_ROUND2_JS_STARTER,
+      title: OFFICIAL_ROUND2_TITLE,
+      description: OFFICIAL_ROUND2_DESCRIPTION,
+      language: 'c',
+      starterCode: OFFICIAL_ROUND2_LANGUAGE_STARTERS.c,
       marks: 100.0,
       rubric: {
         bugIdentification: 20,
         testCorrectness: 50,
         edgeCases: 20,
         codeQuality: 10,
+        difficulty: 'EASY',
         supportedLanguages: ROUND2_SUPPORTED_LANGUAGES,
         languageStarterCodes: OFFICIAL_ROUND2_LANGUAGE_STARTERS,
         languagePlantedBugs: OFFICIAL_ROUND2_LANGUAGE_BUGS,
       },
-      sampleTestCases: [
-        {
-          stdin: 'CAPACITY=10 REFILL=2 CONSUME=5',
-          expectedOutput: 'CONSUMED: true, REMAINING: 5',
-          explanation: 'Initial bucket starts full (10 tokens). Consuming 5 leaves 5.',
-        },
-        {
-          stdin: 'CAPACITY=5 REFILL=1 CONSUME=10',
-          expectedOutput: 'CONSUMED: false, REMAINING: 5',
-          explanation: 'Insufficient tokens (5 < 10) must reject without deducting balance.',
-        },
-      ],
-      hiddenTestCases: [
-        {
-          stdin: 'CAPACITY=100 REFILL=50 ELAPSED_MS=500 CONSUME=25',
-          expectedOutput: 'CONSUMED: true, REMAINING: 75',
-          marks: 10,
-        },
-        {
-          stdin: 'CAPACITY=10 REFILL=5 CLOCK_SKEW_NEGATIVE=-2000 CONSUME=1',
-          expectedOutput: 'CONSUMED: true, REMAINING: 9',
-          marks: 10,
-        },
-      ],
-      plantedBugs: OFFICIAL_ROUND2_PLANTED_BUGS,
+      sampleTestCases: OFFICIAL_ROUND2_SAMPLE_TESTS,
+      hiddenTestCases: OFFICIAL_ROUND2_HIDDEN_TESTS,
+      plantedBugs: OFFICIAL_ROUND2_LANGUAGE_BUGS.c,
     };
 
     await this.prisma.question.create({
@@ -736,7 +707,7 @@ The system is failing under stress testing: it allows illegal request bursts, ca
         rubric: bugHuntProblem.rubric as any,
         sampleTestCases: bugHuntProblem.sampleTestCases,
         hiddenTestCases: bugHuntProblem.hiddenTestCases,
-        plantedBugs: bugHuntProblem.plantedBugs,
+        plantedBugs: bugHuntProblem.plantedBugs as any,
         isActive: true,
       },
     });
@@ -887,58 +858,91 @@ The system is failing under stress testing: it allows illegal request bursts, ca
   }
 
   /**
+   * Non-destructively synchronizes Round 2 to the official Student Result Analyzer mission.
+   * Archives any superseded Round 2 mission (e.g. Token Bucket Rate Limiter) by setting
+   * isActive: false and shifting orderNumber (+100) while preserving all historical data.
+   */
+  async syncOfficialRound2Question() {
+    const r2 = await this.prisma.competitionRound.findFirst({ where: { roundNumber: 2 } });
+    if (!r2) return;
+
+    const legacyR2Questions = await this.prisma.question.findMany({
+      where: {
+        roundId: r2.id,
+        title: { not: OFFICIAL_ROUND2_TITLE },
+      },
+      select: { id: true, orderNumber: true, isActive: true },
+    });
+
+    for (const legacy of legacyR2Questions) {
+      if (legacy.isActive || legacy.orderNumber < 100) {
+        let nextOrder = legacy.orderNumber < 100 ? legacy.orderNumber + 100 : legacy.orderNumber;
+        while (
+          await this.prisma.question.findFirst({
+            where: { roundId: r2.id, orderNumber: nextOrder, id: { not: legacy.id } },
+            select: { id: true },
+          })
+        ) {
+          nextOrder += 100;
+        }
+        await this.prisma.question.update({
+          where: { id: legacy.id },
+          data: { isActive: false, orderNumber: nextOrder },
+        });
+      }
+    }
+
+    const existingOfficial = await this.prisma.question.findFirst({
+      where: { roundId: r2.id, title: OFFICIAL_ROUND2_TITLE },
+    });
+
+    if (!existingOfficial) {
+      await this.prisma.question.create({
+        data: {
+          roundId: r2.id,
+          type: 'BUG_HUNT',
+          orderNumber: 1,
+          title: OFFICIAL_ROUND2_TITLE,
+          description: OFFICIAL_ROUND2_DESCRIPTION,
+          language: 'c',
+          starterCode: OFFICIAL_ROUND2_LANGUAGE_STARTERS.c,
+          marks: 100.0,
+          rubric: {
+            bugIdentification: 20,
+            testCorrectness: 50,
+            edgeCases: 20,
+            codeQuality: 10,
+            difficulty: 'EASY',
+            supportedLanguages: ROUND2_SUPPORTED_LANGUAGES,
+            languageStarterCodes: OFFICIAL_ROUND2_LANGUAGE_STARTERS,
+            languagePlantedBugs: OFFICIAL_ROUND2_LANGUAGE_BUGS,
+          } as any,
+          plantedBugs: OFFICIAL_ROUND2_LANGUAGE_BUGS.c as any,
+          sampleTestCases: OFFICIAL_ROUND2_SAMPLE_TESTS as any,
+          hiddenTestCases: OFFICIAL_ROUND2_HIDDEN_TESTS as any,
+          isActive: true,
+        },
+      });
+      this.logger.log('Round 2 Student Result Analyzer mission created and activated.');
+    } else if (!existingOfficial.isActive) {
+      await this.prisma.question.update({
+        where: { id: existingOfficial.id },
+        data: { isActive: true, orderNumber: 1 },
+      });
+    }
+  }
+
+  /**
    * Safely synchronizes official questions without overwriting admin edits or customized test cases.
-   * Only missing, uninitialized, or legacy TypeScript entries are populated.
+   * Only missing, uninitialized, or legacy entries are populated.
    */
   async syncOfficialQuestions() {
     try {
       // Sync Round 1 Official Technical Quiz (15 Questions, 2 Marks each = 30 Marks)
       await this.syncOfficialRound1Questions();
 
-      // Sync legacy Round 2 Question only if it is the seeded Token Bucket with missing fields
-      const r2 = await this.prisma.competitionRound.findFirst({ where: { roundNumber: 2 } });
-      if (r2) {
-        const r2Q = await this.prisma.question.findFirst({
-          where: { roundId: r2.id, title: 'Bug Hunt: Distributed Token Bucket Rate Limiter' },
-        });
-        if (r2Q) {
-          const updateData: any = {};
-          if (r2Q.language === 'typescript') {
-            updateData.language = 'javascript';
-          }
-          if (
-            !r2Q.starterCode ||
-            r2Q.starterCode.trim() === '' ||
-            r2Q.starterCode.includes('// BUG') ||
-            r2Q.starterCode.includes('* BUG') ||
-            r2Q.starterCode.includes('export class')
-          ) {
-            updateData.starterCode = OFFICIAL_ROUND2_JS_STARTER;
-          }
-          const currentBugs = Array.isArray(r2Q.plantedBugs) ? (r2Q.plantedBugs as any[]) : [];
-          const hasOutdatedBugs =
-            currentBugs.length === 0 ||
-            currentBugs.some(
-              (b) => b.lineNumber === 38 || b.lineNumber === 60 || b.startOffset === undefined,
-            );
-          if (hasOutdatedBugs) {
-            updateData.plantedBugs = OFFICIAL_ROUND2_PLANTED_BUGS;
-          }
-          if (r2Q.hiddenTestCases) {
-            const htcStr = JSON.stringify(r2Q.hiddenTestCases);
-            if (htcStr.includes('REMAINING: 100')) {
-              updateData.hiddenTestCases = JSON.parse(htcStr.replace('REMAINING: 100', 'REMAINING: 75'));
-            }
-          }
-          if (Object.keys(updateData).length > 0) {
-            await this.prisma.question.update({
-              where: { id: r2Q.id },
-              data: updateData,
-            });
-            this.logger.log(`Safely migrated default Round 2 question: ${Object.keys(updateData).join(', ')}`);
-          }
-        }
-      }
+      // Sync Round 2 Official Student Result Analyzer (4 languages, 4 bugs, 8 test cases)
+      await this.syncOfficialRound2Question();
 
       // Sync Round 3 Questions safely (IGNITRON Event Analytics Engine - 6 Questions)
       const r3 = await this.prisma.competitionRound.findFirst({ where: { roundNumber: 3 } });

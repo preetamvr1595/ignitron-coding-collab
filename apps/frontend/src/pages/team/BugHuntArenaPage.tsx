@@ -726,7 +726,7 @@ export const BugHuntArenaPage: React.FC = () => {
                 </span>
               </div>
               <h1 className="text-sm font-bold text-white tracking-tight hidden sm:block">
-                {arenaState?.title || 'Distributed Token Bucket Rate Limiter'}
+                {arenaState?.title || 'Bug Hunt: Student Result Analyzer'}
               </h1>
             </div>
           </div>
@@ -1169,7 +1169,7 @@ export const BugHuntArenaPage: React.FC = () => {
 
               {identifiedCount === 0 ? (
                 <div className="p-4 rounded-xl bg-black/40 border border-emerald-500/20 text-xs text-slate-400 text-center font-mono">
-                  No defects isolated yet. Read through the rate limiter logic and highlight faulty expressions above.
+                  No defects isolated yet. Read through the Student Result Analyzer code and highlight faulty expressions above.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1390,7 +1390,7 @@ export const BugHuntArenaPage: React.FC = () => {
                         rows={2}
                         value={customStdin}
                         onChange={(e) => setCustomStdin(e.target.value)}
-                        placeholder="e.g. CAPACITY=20 REFILL=5 CONSUME=10"
+                        placeholder="e.g. 80 70 90"
                         className="w-full bg-black/60 border border-emerald-500/30 rounded-xl p-2 font-mono text-xs text-white focus:outline-none focus:border-emerald-400"
                       />
                     </div>

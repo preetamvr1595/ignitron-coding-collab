@@ -8,23 +8,22 @@ import {
   Clock,
   CheckCircle2,
   ChevronLeft,
-  ChevronRight,
-  Download,
-  Search,
   Trophy,
   Check,
   Lock,
   PauseCircle,
   ShieldAlert,
-  FileSpreadsheet,
   Flag,
   Code2,
-  BookOpen,
   BarChart3,
   CircleDot,
   Flame,
   Table2,
   ArrowRight,
+  FolderOpen,
+  Info,
+  Target,
+  Layers,
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
@@ -32,163 +31,11 @@ import { questionAndArenaService } from '../../services/question-and-arena.servi
 import { useCompetitionState, useServerTimer } from '../../hooks/useCompetition';
 import { useParticipantMonitoring } from '../../hooks/useParticipantMonitoring';
 import { ExamLockOverlay } from '../../components/competition/ExamLockOverlay';
+import { Round3DatasetExplorer } from '../../components/competition/Round3DatasetExplorer';
 import {
   AnalyticsArenaStateDto,
   AnalyticsQuestionDto,
 } from '@ignitron/shared';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Dataset registry (metadata + fallback preview)
-// ─────────────────────────────────────────────────────────────────────────────
-export interface DatasetDef {
-  fileName: string;
-  dfName: string;
-  title: string;
-  description: string;
-  columns: string[];
-  previewRows: Record<string, any>[];
-  fieldInfo: { field: string; type: string; desc: string }[];
-}
-
-export const DATASET_REGISTRY: Record<string, DatasetDef> = {
-  'IGNITRON_Round3_Reference_Dataset.json': {
-    fileName: 'IGNITRON_Round3_Reference_Dataset.json',
-    dfName: 'reference_json',
-    title: 'IGNITRON Round 3 Reference Dataset (Master JSON)',
-    description:
-      'Complete JSON dataset with participant_scores (100), submission_status_summary (1,000), submission_ids (1,000), team_leaderboard (50), team_round_scores (50), and verification metrics.',
-    columns: ['section', 'record_count', 'description', 'verified_highlight'],
-    previewRows: [
-      { section: 'participant_scores', record_count: 100, description: 'All participants and their round scores.', verified_highlight: 'P101 total=207.4; Highest=P196 (217.2)' },
-      { section: 'submission_status_summary', record_count: 1000, description: 'Submission count by execution status.', verified_highlight: 'ACCEPTED=302 / 1000' },
-      { section: 'submission_ids', record_count: 1000, description: 'All submission IDs; use to check for duplicates.', verified_highlight: 'Duplicates=0' },
-      { section: 'team_leaderboard', record_count: 50, description: 'All 50 teams sorted by total score descending.', verified_highlight: 'Rank 1=T148 (Syntax Ninjas, 425.6)' },
-      { section: 'team_round_scores', record_count: 50, description: 'Team round-wise scores for ranking and tie-break.', verified_highlight: 'Totals match leaderboard=true' },
-    ],
-    fieldInfo: [
-      { field: 'dataset_name', type: 'string', desc: 'IGNITRON Round 3 Reference Dataset' },
-      { field: 'sections.participant_scores', type: 'object (100)', desc: 'Per-participant round_1_score, round_2_score, round_3_score, total_score' },
-      { field: 'sections.submission_status_summary', type: 'object (5)', desc: 'Counts for ACCEPTED, COMPILATION_ERROR, RUNTIME_ERROR, TIME_LIMIT_EXCEEDED, WRONG_ANSWER' },
-      { field: 'sections.submission_ids', type: 'object (1,000)', desc: 'List of submission_id strings SUB_10001..SUB_11000' },
-      { field: 'sections.team_leaderboard', type: 'object (50)', desc: 'Ranked teams with rank, team_id, team_name, department, scores, total_score' },
-      { field: 'sections.team_round_scores', type: 'object (50)', desc: 'team_id, team_name, total_score, round_2_score, round_3_score' },
-      { field: 'verification', type: 'object (10)', desc: 'Ground-truth verification values' },
-    ],
-  },
-  'participants.csv': {
-    fileName: 'participants.csv',
-    dfName: 'df',
-    title: 'Participant Scores (100 Records)',
-    description: 'Participant IDs, names, and Round 1, 2, 3 scores across all 100 contestants.',
-    columns: ['participant_id', 'participant_name', 'round_1_score', 'round_2_score', 'round_3_score', 'total_score'],
-    previewRows: [
-      { participant_id: 'P101', participant_name: 'Akash Patel', round_1_score: 25.4, round_2_score: 87.4, round_3_score: 94.6, total_score: 207.4 },
-      { participant_id: 'P102', participant_name: 'Vikram Chauhan', round_1_score: 22.7, round_2_score: 78.5, round_3_score: 67.7, total_score: 168.9 },
-      { participant_id: 'P170', participant_name: 'Priya Sharma', round_1_score: 28.1, round_2_score: 91.2, round_3_score: 96.8, total_score: 216.1 },
-      { participant_id: 'P196', participant_name: 'Neha Singh', round_1_score: 29.0, round_2_score: 96.4, round_3_score: 91.8, total_score: 217.2 },
-    ],
-    fieldInfo: [
-      { field: 'participant_id', type: 'string (PK)', desc: 'Unique participant identifier (P101–P200)' },
-      { field: 'participant_name', type: 'string', desc: 'Full name of the participant' },
-      { field: 'round_1_score', type: 'float', desc: 'Raw score in Round 1' },
-      { field: 'round_2_score', type: 'float', desc: 'Raw score in Round 2' },
-      { field: 'round_3_score', type: 'float', desc: 'Raw score in Round 3' },
-      { field: 'total_score', type: 'float', desc: 'Sum of all round scores' },
-    ],
-  },
-  'submission_ids.csv': {
-    fileName: 'submission_ids.csv',
-    dfName: 'ids',
-    title: 'Submission IDs (1,000 Records)',
-    description: 'All 1,000 unique submission IDs from SUB_10001 to SUB_11000.',
-    columns: ['submission_id'],
-    previewRows: [
-      { submission_id: 'SUB_10001' },
-      { submission_id: 'SUB_10002' },
-      { submission_id: 'SUB_10003' },
-      { submission_id: 'SUB_10004' },
-    ],
-    fieldInfo: [
-      { field: 'submission_id', type: 'string (PK)', desc: 'Unique submission identifier (SUB_10001..SUB_11000). No duplicates.' },
-    ],
-  },
-  'submission_status_summary.csv': {
-    fileName: 'submission_status_summary.csv',
-    dfName: 'summary',
-    title: 'Submission Status Summary (5 Statuses)',
-    description: 'Count of 1,000 submissions grouped by execution status.',
-    columns: ['execution_status', 'count'],
-    previewRows: [
-      { execution_status: 'ACCEPTED', count: 302 },
-      { execution_status: 'WRONG_ANSWER', count: 192 },
-      { execution_status: 'COMPILATION_ERROR', count: 184 },
-      { execution_status: 'RUNTIME_ERROR', count: 178 },
-      { execution_status: 'TIME_LIMIT_EXCEEDED', count: 144 },
-    ],
-    fieldInfo: [
-      { field: 'execution_status', type: 'string', desc: 'One of ACCEPTED, WRONG_ANSWER, COMPILATION_ERROR, RUNTIME_ERROR, TIME_LIMIT_EXCEEDED' },
-      { field: 'count', type: 'integer', desc: 'Number of submissions with this status (total = 1,000)' },
-    ],
-  },
-  'team_leaderboard.csv': {
-    fileName: 'team_leaderboard.csv',
-    dfName: 'leaderboard',
-    title: 'Team Leaderboard (50 Teams)',
-    description: 'All 50 teams sorted by total score descending with rank, department and round scores.',
-    columns: ['rank', 'team_id', 'team_name', 'department', 'total_score'],
-    previewRows: [
-      { rank: 1, team_id: 'T148', team_name: 'Syntax Ninjas', department: 'Computer Science & Engineering', total_score: 425.6 },
-      { rank: 2, team_id: 'T147', team_name: 'Recursion Crusaders', department: 'Artificial Intelligence & Data Science', total_score: 402.6 },
-      { rank: 3, team_id: 'T118', team_name: 'Code Architects', department: 'Information Technology', total_score: 388.9 },
-      { rank: 4, team_id: 'T122', team_name: 'Omega Wolves', department: 'Electronics & Communication', total_score: 384.8 },
-    ],
-    fieldInfo: [
-      { field: 'rank', type: 'integer', desc: 'Team rank (1 = highest total_score)' },
-      { field: 'team_id', type: 'string (PK)', desc: 'Team identifier (T101–T150)' },
-      { field: 'team_name', type: 'string', desc: 'Registered team name' },
-      { field: 'department', type: 'string', desc: 'Academic department' },
-      { field: 'total_score', type: 'float', desc: 'Primary ranking key (descending)' },
-    ],
-  },
-  'team_round_scores.csv': {
-    fileName: 'team_round_scores.csv',
-    dfName: 'scores',
-    title: 'Team Round Scores (50 Records)',
-    description: 'Per-team total_score, round_3_score and round_2_score for multi-key ranking.',
-    columns: ['team_id', 'team_name', 'total_score', 'round_2_score', 'round_3_score'],
-    previewRows: [
-      { team_id: 'T148', team_name: 'Syntax Ninjas', total_score: 425.6, round_2_score: 197.9, round_3_score: 176.7 },
-      { team_id: 'T147', team_name: 'Recursion Crusaders', total_score: 402.6, round_2_score: 179.3, round_3_score: 172.0 },
-      { team_id: 'T118', team_name: 'Code Architects', total_score: 388.9, round_2_score: 161.4, round_3_score: 180.6 },
-    ],
-    fieldInfo: [
-      { field: 'team_id', type: 'string (PK)', desc: 'Team identifier (T101–T150)' },
-      { field: 'team_name', type: 'string', desc: 'Registered team name' },
-      { field: 'total_score', type: 'float', desc: 'Primary ranking key (descending)' },
-      { field: 'round_2_score', type: 'float', desc: 'Tertiary tie-break key (descending)' },
-      { field: 'round_3_score', type: 'float', desc: 'Secondary tie-break key (descending)' },
-    ],
-  },
-  'verification_summary.csv': {
-    fileName: 'verification_summary.csv',
-    dfName: 'verification',
-    title: 'Verification Summary (10 Metrics)',
-    description: 'Official ground-truth verification metrics matching the master JSON.',
-    columns: ['metric', 'value'],
-    previewRows: [
-      { metric: 'participant_count', value: '100' },
-      { metric: 'team_count', value: '50' },
-      { metric: 'submission_count', value: '1000' },
-      { metric: 'duplicate_submission_id_count', value: '0' },
-      { metric: 'p101_total_score', value: '207.4' },
-      { metric: 'accepted_submission_count', value: '302' },
-    ],
-    fieldInfo: [
-      { field: 'metric', type: 'string', desc: 'Verification metric key' },
-      { field: 'value', type: 'string/JSON', desc: 'Exact verified reference value' },
-    ],
-  },
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Python syntax highlighter
@@ -205,7 +52,7 @@ function highlightPython(code: string): React.ReactNode {
     let m: RegExpExecArray | null;
     while ((m = combined.exec(src)) !== null) {
       if (m.index > last) result.push(<span key={key++}>{src.slice(last, m.index)}</span>);
-      if (m[1]) result.push(<span key={key++} className="text-emerald-400/75 italic">{m[1]}</span>);
+      if (m[1]) result.push(<span key={key++} className="text-emerald-400/80 italic">{m[1]}</span>);
       else if (m[2]) result.push(<span key={key++} className="text-amber-300">{m[2]}</span>);
       else if (m[3]) result.push(<span key={key++} className="text-violet-300 font-semibold">{m[3]}</span>);
       else if (m[4]) result.push(<span key={key++} className="text-sky-300">{m[4]}</span>);
@@ -218,7 +65,7 @@ function highlightPython(code: string): React.ReactNode {
   return (
     <>
       {lines.map((line, li) => (
-        <span key={li} className="block leading-[1.6]">
+        <span key={li} className="block leading-[1.55]">
           {tokenize(line)}
         </span>
       ))}
@@ -232,16 +79,16 @@ function highlightPython(code: string): React.ReactNode {
 type NavTab = 'DATASET' | 'CASE_1' | 'CASE_2' | 'CASE_3';
 
 const NAV_TABS: Array<{ id: NavTab; label: string; subtitle: string; num?: string; caseNumber?: 1 | 2 | 3 }> = [
-  { id: 'DATASET', label: 'DATASET', subtitle: 'Reference Files' },
-  { id: 'CASE_1', label: 'CASE 01', subtitle: 'Data Fundamentals', num: '01', caseNumber: 1 },
-  { id: 'CASE_2', label: 'CASE 02', subtitle: 'Data Integrity', num: '02', caseNumber: 2 },
-  { id: 'CASE_3', label: 'CASE 03', subtitle: 'Analytical Intelligence', num: '03', caseNumber: 3 },
+  { id: 'DATASET', label: 'Dataset', subtitle: 'Reference Data' },
+  { id: 'CASE_1', label: 'Case 01', subtitle: 'Data Fundamentals', num: '01', caseNumber: 1 },
+  { id: 'CASE_2', label: 'Case 02', subtitle: 'Data Integrity', num: '02', caseNumber: 2 },
+  { id: 'CASE_3', label: 'Case 03', subtitle: 'Analytical Intelligence', num: '03', caseNumber: 3 },
 ];
 
 const CASE_DESCRIPTIONS: Record<number, string> = {
-  1: 'Basic data operations, list aggregation, and dictionary lookup.',
-  2: 'Submission integrity checks and set-based duplicate detection.',
-  3: 'Leaderboard analysis and multi-field tuple ranking.',
+  1: "Trace Python snippets to calculate P101's total score and identify the highest-scoring participant.",
+  2: 'Trace Python snippets to count accepted submissions and detect duplicate submission IDs.',
+  3: 'Trace Python snippets to find the highest-ranked team and apply multi-key team ranking.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,16 +115,6 @@ export const EventAnalyticsArenaPage: React.FC = () => {
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [showLeaveWarningModal, setShowLeaveWarningModal] = useState(false);
   const [showConcludedModal, setShowConcludedModal] = useState(false);
-
-  // Dataset explorer
-  const [selectedDatasetFile, setSelectedDatasetFile] = useState<string>('IGNITRON_Round3_Reference_Dataset.json');
-  const [datasetSearch, setDatasetSearch] = useState('');
-  const [datasetPage, setDatasetPage] = useState(1);
-  const [backendDatasetData, setBackendDatasetData] = useState<{
-    columns: string[]; rows: Record<string, any>[]; totalRows: number; totalPages: number;
-  } | null>(null);
-  const [isDatasetLoading, setIsDatasetLoading] = useState(false);
-  const [datasetSubTab, setDatasetSubTab] = useState<'PREVIEW' | 'SCHEMA'>('PREVIEW');
 
   // Competition / timer
   const { data: compState } = useCompetitionState();
@@ -333,21 +170,6 @@ export const EventAnalyticsArenaPage: React.FC = () => {
 
   useEffect(() => { fetchArenaState(); }, [fetchArenaState]);
 
-  // Dataset preview
-  useEffect(() => {
-    if (activeNav !== 'DATASET') return;
-    const def = DATASET_REGISTRY[selectedDatasetFile];
-    if (!def) return;
-    setIsDatasetLoading(true);
-    setBackendDatasetData(null);
-    questionAndArenaService.getDatasetPreview(selectedDatasetFile, datasetPage, 10, datasetSearch)
-      .then((data: any) => { setBackendDatasetData(data); })
-      .catch(() => {})
-      .finally(() => setIsDatasetLoading(false));
-  }, [activeNav, selectedDatasetFile, datasetPage, datasetSearch]);
-
-  useEffect(() => { setDatasetPage(1); }, [selectedDatasetFile, datasetSearch]);
-
   // Computed
   const activeCase = useMemo(() => {
     if (!arenaState || activeNav === 'DATASET') return null;
@@ -367,7 +189,6 @@ export const EventAnalyticsArenaPage: React.FC = () => {
       .filter((q) => Boolean(selectedOptions[q.id])).length;
   }, [arenaState, selectedOptions]);
 
-  // Case progress
   const caseProgress = useMemo(() => {
     if (!arenaState) {
       return {
@@ -456,7 +277,6 @@ export const EventAnalyticsArenaPage: React.FC = () => {
     }
   };
 
-  // Computed case readiness
   const isActiveCaseSubmitted = activeCase ? activeCase.questions.length > 0 && activeCase.questions.every((q) => q.isSubmitted) : false;
   const isActiveCaseReadyToSubmit = activeCase
     ? activeCase.questions.length > 0 &&
@@ -472,14 +292,14 @@ export const EventAnalyticsArenaPage: React.FC = () => {
   // ─────────────────────── RENDER STATES ───────────────────────
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#020b06] flex items-center justify-center">
+      <div className="min-h-screen bg-[#020b06] flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <div className="relative mx-auto w-14 h-14">
             <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20" />
             <div className="absolute inset-0 rounded-full border-t-2 border-emerald-400 animate-spin" />
             <Code2 className="absolute inset-0 m-auto w-6 h-6 text-emerald-400" />
           </div>
-          <p className="text-xs font-mono tracking-wide text-emerald-300/70">Loading Python Code Tracing Challenge…</p>
+          <p className="text-xs font-mono tracking-wide text-emerald-300/75">Loading Python Code Tracing Challenge…</p>
         </div>
       </div>
     );
@@ -500,19 +320,20 @@ export const EventAnalyticsArenaPage: React.FC = () => {
   }
 
   // ─────────────────────── MAIN RENDER ───────────────────────
-  const datasetFiles = Object.keys(DATASET_REGISTRY);
-  const selectedDef = DATASET_REGISTRY[selectedDatasetFile];
-  const displayRows = backendDatasetData?.rows ?? selectedDef?.previewRows ?? [];
-  const displayColumns = backendDatasetData?.columns ?? selectedDef?.columns ?? [];
   const progressPct = totalQuestionsCount > 0 ? (answeredCount / totalQuestionsCount) * 100 : 0;
+  const activeCaseAnsweredCount = activeCase
+    ? activeCase.questions.filter((q) => Boolean(selectedOptions[q.id])).length
+    : 0;
+  const activeCaseTotalCount = activeCase ? activeCase.questions.length : 2;
+  const activeCasePct = activeCaseTotalCount > 0 ? (activeCaseAnsweredCount / activeCaseTotalCount) * 100 : 0;
 
   return (
     <div
-      className="min-h-screen bg-[#020b06] text-slate-100 flex flex-col selection:bg-emerald-500/30"
+      className="min-h-screen bg-[#020b06] text-slate-100 flex flex-col selection:bg-emerald-500/30 overflow-x-hidden"
       style={{
         fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif",
         backgroundImage:
-          'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(16, 185, 129, 0.08), transparent 70%)',
+          'radial-gradient(ellipse 90% 45% at 50% 0%, rgba(16, 185, 129, 0.10), transparent 70%), radial-gradient(ellipse 60% 35% at 15% 100%, rgba(16, 185, 129, 0.06), transparent 70%)',
       }}
     >
       <ExamLockOverlay
@@ -527,9 +348,9 @@ export const EventAnalyticsArenaPage: React.FC = () => {
 
       {/* ═══════════════════════════ TOP HEADER ═══════════════════════════ */}
       <header className="sticky top-0 z-40 bg-[#020d07]/95 backdrop-blur-xl border-b border-emerald-900/50">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          {/* Brand */}
-          <div className="flex items-center gap-3 shrink-0">
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
+          {/* Left: Back + Brand */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <button
               type="button"
               onClick={handleBackToDashboard}
@@ -538,149 +359,163 @@ export const EventAnalyticsArenaPage: React.FC = () => {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/35 flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.15)]">
                 <Flame className="w-4 h-4 text-amber-400" />
               </div>
               <div>
-                <div className="text-xs font-black tracking-widest text-emerald-400 uppercase leading-none">IGNITRON 2K26</div>
-                <div className="text-[10px] text-slate-500 font-mono leading-none mt-0.5">CODE RELAY ARENA</div>
+                <div className="text-xs font-black tracking-wider text-white uppercase leading-none">IGNITRON 2K26</div>
+                <div className="text-[9px] text-emerald-400/70 font-mono tracking-widest leading-none mt-0.5">CODING COLLAB</div>
               </div>
             </div>
           </div>
 
-          {/* Round indicators */}
-          <div className="hidden md:flex items-center gap-2">
+          {/* Center: Round Status Pills */}
+          <div className="hidden lg:flex items-center gap-2">
             {['Round 1', 'Round 2'].map((r) => (
               <span
                 key={r}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/70 border border-slate-800 text-slate-400 text-xs font-medium cursor-default"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#04180d] border border-emerald-900/60 text-slate-300 text-xs font-medium cursor-default"
               >
-                {r} <Check className="w-3 h-3 text-emerald-400" />
+                <span>{r}</span>
+                <Check className="w-3 h-3 text-emerald-400" />
               </span>
             ))}
-            <span className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/50 text-emerald-200 text-xs font-bold shadow-[0_0_14px_rgba(16,185,129,0.18)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Round 3
+            <span className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/60 text-emerald-200 text-xs font-bold shadow-[0_0_16px_rgba(16,185,129,0.22)]">
+              <Flame className="w-3 h-3 text-amber-400" />
+              <span>Round 3</span>
             </span>
           </div>
 
-          {/* Right: Team + Server-Authoritative Timer */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          {/* Right: Team + Gold-bordered Countdown Timer */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {teamUser && (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/70 border border-slate-800 text-xs text-slate-300 font-semibold">
-                <CircleDot className="w-3 h-3 text-emerald-400" />
-                <span>{teamUser.teamName || 'Team'}</span>
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#04180d] border border-emerald-900/60 text-xs text-slate-200 font-semibold max-w-[170px] truncate">
+                <CircleDot className="w-3 h-3 text-sky-400 shrink-0" />
+                <span className="truncate">Team: {teamUser.teamName || 'Team'}</span>
               </div>
             )}
             <div
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-mono font-bold ${
+              className={`flex items-center gap-2 px-3 sm:px-3.5 py-1 rounded-full border text-xs font-mono ${
                 timer.secondsLeft > 0 && timer.secondsLeft <= 300
-                  ? 'bg-rose-950/70 border-rose-500/50 text-rose-300 animate-pulse'
-                  : 'bg-[#04180d] border-emerald-700/50 text-emerald-200'
+                  ? 'bg-rose-950/70 border-rose-500/60 text-rose-300 animate-pulse'
+                  : 'bg-[#08150b] border-amber-500/50 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.12)]'
               }`}
             >
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[10px] uppercase tracking-wider text-slate-400">Time Left</span>
-              <span className="text-sm font-black tracking-tight text-white">{timer.formatted}</span>
+              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <div className="leading-tight">
+                <div className="text-[8px] uppercase tracking-widest text-amber-300/75 hidden sm:block">TIME LEFT</div>
+                <div className="text-xs sm:text-sm font-black tracking-wider text-white">
+                  {timer.formatted.replace(':', ' : ')}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       {/* ═══════════════════════════ ROUND BANNER ═══════════════════════════ */}
-      <div className="bg-gradient-to-r from-[#020f08] via-[#041a0d] to-[#020f08] border-b border-emerald-900/40">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-900/70 to-teal-950/80 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_16px_rgba(16,185,129,0.12)] shrink-0">
-              <Code2 className="w-5 h-5 text-emerald-400" />
+      <section className="max-w-[1440px] w-full mx-auto px-3 sm:px-6 pt-4">
+        <div className="rounded-2xl bg-gradient-to-r from-[#03140b]/95 via-[#051d10]/90 to-[#03140b]/95 border border-emerald-900/55 px-4 sm:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5 sm:gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#041b0f] border border-emerald-500/35 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.15)] shrink-0">
+              <Code2 className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-400">ROUND 03</span>
-                <span className="text-slate-700">•</span>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400/70">No Negative Marking</span>
+              <div className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-amber-400">
+                ROUND 3
               </div>
-              <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">
+              <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-snug">
                 Python Code <span className="text-emerald-400">Tracing Challenge</span>
               </h1>
-              <p className="text-xs text-slate-400">
-                Read each Python snippet carefully and select the option where both the code and its output are correct.
+              <p className="text-xs text-slate-300/85 mt-0.5">
+                Read the Python snippets and choose the option where both the code and its output are correct.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {[
-              { label: 'Questions', value: String(totalQuestionsCount), accent: 'text-white' },
-              { label: 'Per Question', value: '1 Mark', accent: 'text-emerald-300' },
-              { label: 'Total Score', value: '6 Marks', accent: 'text-amber-300' },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="px-3.5 py-2 rounded-xl bg-[#03150b]/90 border border-emerald-900/60 text-center min-w-[82px]"
-              >
-                <div className={`text-sm font-black ${stat.accent}`}>{stat.value}</div>
-                <div className="text-[10px] font-mono text-slate-400">{stat.label}</div>
-              </div>
-            ))}
+          {/* Unified 3-column Stats Pill */}
+          <div className="grid grid-cols-3 rounded-xl bg-[#021008]/90 border border-amber-500/30 divide-x divide-emerald-900/60 shrink-0 self-start md:self-auto">
+            <div className="px-4 py-2 text-center">
+              <Code2 className="w-3.5 h-3.5 text-amber-400 mx-auto mb-0.5" />
+              <div className="text-sm font-black text-white leading-tight">{totalQuestionsCount}</div>
+              <div className="text-[10px] text-slate-400">Questions</div>
+            </div>
+            <div className="px-4 py-2 text-center">
+              <Trophy className="w-3.5 h-3.5 text-amber-400 mx-auto mb-0.5" />
+              <div className="text-sm font-black text-white leading-tight">1 Mark</div>
+              <div className="text-[10px] text-slate-400">Each</div>
+            </div>
+            <div className="px-4 py-2 text-center">
+              <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 mx-auto mb-0.5" />
+              <div className="text-sm font-black text-white leading-tight">6 Marks</div>
+              <div className="text-[10px] text-slate-400">Total</div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ═══════════════════════════ NAVIGATION BAR ═══════════════════════════ */}
-      <nav className="bg-[#020d07]/90 border-b border-emerald-900/40 sticky top-14 z-30 backdrop-blur-md">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
-          <div className="flex items-stretch gap-1 overflow-x-auto">
-            {NAV_TABS.map((tab) => {
-              const isActive = activeNav === tab.id;
-              const cp = tab.caseNumber ? caseProgress[tab.caseNumber] : null;
-              const submitted = cp?.submitted;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleSelectNav(tab.id)}
-                  className={`flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-all shrink-0 cursor-pointer whitespace-nowrap ${
-                    isActive
-                      ? 'border-emerald-400 text-emerald-200 bg-emerald-500/10'
-                      : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
-                  }`}
-                >
-                  {tab.id === 'DATASET' ? (
-                    <Database className="w-3.5 h-3.5 text-amber-400" />
-                  ) : (
-                    <span
-                      className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black border ${
-                        isActive
-                          ? 'bg-emerald-400 text-slate-950 border-emerald-300'
-                          : submitted
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                          : 'bg-slate-900 text-slate-400 border-slate-700'
-                      }`}
-                    >
-                      {submitted ? <Check className="w-3 h-3" /> : tab.num}
-                    </span>
-                  )}
-                  <span className="tracking-wide">{tab.label}</span>
-                  <span className={`hidden lg:inline text-[11px] font-normal ${isActive ? 'text-emerald-300/75' : 'text-slate-500'}`}>
-                    — {tab.subtitle}
+      {/* ═══════════════════════════ 4-CARD NAV TABS ═══════════════════════════ */}
+      <nav className="max-w-[1440px] w-full mx-auto px-3 sm:px-6 pt-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          {NAV_TABS.map((tab) => {
+            const isActive = activeNav === tab.id;
+            const cp = tab.caseNumber ? caseProgress[tab.caseNumber] : null;
+            const submitted = cp?.submitted;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleSelectNav(tab.id)}
+                className={`flex items-center gap-3 px-3.5 sm:px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-emerald-500/15 border-emerald-400/70 shadow-[0_0_20px_rgba(16,185,129,0.2)] text-white'
+                    : 'bg-[#03130a]/90 border-emerald-900/50 hover:border-emerald-600/50 hover:bg-[#04190e] text-slate-300'
+                }`}
+              >
+                {tab.id === 'DATASET' ? (
+                  <span
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
+                      isActive
+                        ? 'bg-emerald-400/20 border-emerald-400/60 text-emerald-300'
+                        : 'bg-[#020c06] border-emerald-900/60 text-emerald-400'
+                    }`}
+                  >
+                    <Database className="w-3.5 h-3.5" />
                   </span>
-                  {cp && !submitted && (
-                    <span className="ml-1 px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-800/60 text-emerald-300 text-[10px] font-mono">
-                      {cp.answered}/{cp.total}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                ) : (
+                  <span
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 border ${
+                      isActive
+                        ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.5)]'
+                        : submitted
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                        : 'bg-[#041a0e] text-emerald-300/80 border-emerald-800/70'
+                    }`}
+                  >
+                    {submitted ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : tab.num}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs sm:text-[13px] font-bold truncate">{tab.label}</div>
+                  <div className={`text-[10px] truncate ${isActive ? 'text-emerald-200/85' : 'text-slate-400'}`}>
+                    {tab.subtitle}
+                  </div>
+                </div>
+                {cp && !submitted && (
+                  <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-[#020c06] border border-emerald-900/60 text-emerald-300/90 text-[10px] font-mono shrink-0">
+                    {cp.answered}/{cp.total}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </nav>
 
       {/* ═══════════════════════════ ALERTS / BANNERS ═══════════════════════════ */}
       {(focusWarning || isCompetitionPaused || arenaState?.isSubmitted || caseBanner) && (
-        <div className="max-w-[1440px] w-full mx-auto px-4 sm:px-6 pt-3 space-y-2">
+        <div className="max-w-[1440px] w-full mx-auto px-3 sm:px-6 pt-3 space-y-2">
           {focusWarning && (
             <div className="p-3 rounded-xl bg-amber-950/70 border border-amber-500/50 flex items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 text-amber-200">
@@ -737,92 +572,85 @@ export const EventAnalyticsArenaPage: React.FC = () => {
       )}
 
       {/* ═══════════════════════════ MAIN WORKSPACE ═══════════════════════════ */}
-      <div className="max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-5 flex flex-col lg:flex-row gap-5 flex-1">
+      {activeNav === 'DATASET' ? (
+        <main key="DATASET" className="max-w-[1440px] w-full mx-auto px-3 sm:px-6 py-4 flex-1">
+          <Round3DatasetExplorer />
+        </main>
+      ) : (
+      <div className="max-w-[1440px] w-full mx-auto px-3 sm:px-6 py-4 flex flex-col lg:flex-row gap-4 flex-1 items-start">
 
         {/* ─────── LEFT SIDEBAR ─────── */}
-        <aside className="w-full lg:w-64 shrink-0 space-y-4">
+        <aside className="w-full lg:w-[250px] xl:w-[264px] shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
           {/* Round Progress */}
-          <div className="rounded-2xl bg-[#03130a]/90 border border-emerald-900/50 p-4 space-y-3.5 shadow-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-emerald-400/80 flex items-center gap-1.5">
-                <BarChart3 className="w-3.5 h-3.5" /> Progress
-              </span>
-              <span className="text-xs font-mono font-bold text-white">
-                {answeredCount}/{totalQuestionsCount}
-              </span>
+          <div className="rounded-2xl bg-[#03130a]/90 border border-emerald-900/55 p-4 space-y-3.5 shadow-lg">
+            <div className="text-xs font-bold text-slate-100 flex items-center gap-2">
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Round Progress</span>
             </div>
 
-            {/* Clean linear + circular summary */}
-            <div className="flex items-center gap-3.5 py-1">
-              <div className="relative w-16 h-16 shrink-0">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(16,185,129,0.12)" strokeWidth="6" />
+            {/* Centered Large Circular Progress Ring */}
+            <div className="flex justify-center py-1">
+              <div className="relative w-28 h-28">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 112 112">
+                  <circle cx="56" cy="56" r="46" fill="none" stroke="rgba(16,185,129,0.12)" strokeWidth="9" />
                   <circle
-                    cx="32"
-                    cy="32"
-                    r="26"
+                    cx="56"
+                    cy="56"
+                    r="46"
                     fill="none"
-                    stroke="url(#r3ProgGrad)"
-                    strokeWidth="6"
+                    stroke="url(#r3RingGrad)"
+                    strokeWidth="9"
                     strokeLinecap="round"
-                    strokeDasharray={`${(progressPct / 100) * 163.36} 163.36`}
+                    strokeDasharray={`${(progressPct / 100) * 289.03} 289.03`}
                     style={{ transition: 'stroke-dasharray 0.4s ease' }}
                   />
                   <defs>
-                    <linearGradient id="r3ProgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <linearGradient id="r3RingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="#34d399" />
                       <stop offset="100%" stopColor="#10b981" />
                     </linearGradient>
                   </defs>
                 </svg>
-                <div className="absolute inset-0 flex items-center justify-center text-xs font-black text-white">
-                  {Math.round(progressPct)}%
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-slate-200">{answeredCount} of {totalQuestionsCount} Answered</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">
-                  {[1, 2, 3].filter((cn) => caseProgress[cn]?.submitted).length} of 3 cases submitted
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black text-white leading-none">
+                    {answeredCount}/{totalQuestionsCount}
+                  </span>
+                  <span className="text-[11px] text-slate-400 mt-1">Answered</span>
                 </div>
               </div>
             </div>
 
-            {/* Case completion list */}
-            <div className="space-y-1.5 pt-1 border-t border-emerald-900/40">
-              {[
-                { num: 1, title: 'Data Fundamentals' },
-                { num: 2, title: 'Data Integrity' },
-                { num: 3, title: 'Analytical Intelligence' },
-              ].map((c) => {
-                const cp = caseProgress[c.num] ?? { answered: 0, total: 2, submitted: false };
-                const isSelectedTab = activeNav === `CASE_${c.num}`;
+            {/* Compact Case Progress Rows */}
+            <div className="space-y-1.5">
+              {[1, 2, 3].map((cn) => {
+                const cp = caseProgress[cn] ?? { answered: 0, total: 2, submitted: false };
+                const isSelectedTab = activeNav === `CASE_${cn}`;
                 return (
                   <button
-                    key={c.num}
+                    key={cn}
                     type="button"
-                    onClick={() => handleSelectNav(`CASE_${c.num}` as NavTab)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition cursor-pointer border text-left ${
+                    onClick={() => handleSelectNav(`CASE_${cn}` as NavTab)}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border transition cursor-pointer ${
                       isSelectedTab
-                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-100'
-                        : 'bg-transparent border-transparent hover:bg-emerald-950/40 text-slate-300'
+                        ? 'bg-emerald-500/12 border-emerald-400/60 text-white'
+                        : 'bg-[#020d07]/80 border-emerald-900/45 hover:border-emerald-600/40 text-slate-300'
                     }`}
                   >
-                    <div
-                      className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 text-[10px] font-bold ${
-                        cp.submitted
-                          ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300'
-                          : cp.answered === cp.total
-                          ? 'border-emerald-500/60 text-emerald-300'
-                          : 'border-slate-700 text-slate-500'
-                      }`}
-                    >
-                      {cp.submitted ? <Check className="w-3 h-3" /> : c.num}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                          cp.submitted
+                            ? 'border-emerald-400 bg-emerald-500/25 text-emerald-300'
+                            : isSelectedTab
+                            ? 'border-emerald-400'
+                            : 'border-slate-600'
+                        }`}
+                      >
+                        {cp.submitted && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                      </span>
+                      <span className="text-xs font-semibold">Case 0{cn}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold truncate">Case 0{c.num}</div>
-                      <div className="text-[10px] text-slate-500 truncate">{c.title}</div>
-                    </div>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-xs font-mono text-slate-300">
                       {cp.answered}/{cp.total}
                     </span>
                   </button>
@@ -832,227 +660,48 @@ export const EventAnalyticsArenaPage: React.FC = () => {
           </div>
 
           {/* Instructions */}
-          <div className="rounded-2xl bg-[#03130a]/90 border border-emerald-900/50 p-4 space-y-3 shadow-lg">
-            <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-emerald-400/80 flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5" /> Instructions
+          <div className="rounded-2xl bg-[#03130a]/90 border border-emerald-900/55 p-4 space-y-3 shadow-lg">
+            <div className="text-xs font-bold text-slate-100 flex items-center gap-2">
+              <Info className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Instructions</span>
             </div>
             <ul className="space-y-2">
               {[
-                'Trace each Python snippet and verify its output.',
-                'Select the single option where both code and output match.',
-                'Answers auto-save immediately on selection.',
-                'Submit each case once both questions are answered.',
-                'No code execution or Judge0 run is required.',
+                'Read each Python code snippet carefully.',
+                'Select the option where both the code and its output are correct.',
+                'Only one option is correct per question.',
+                'No compiler or code execution is required.',
+                'Each question has one mark.',
               ].map((text, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                <li key={i} className="flex items-start gap-2 text-xs text-slate-300 leading-snug">
+                  <span className="w-4 h-4 rounded bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
+                  </span>
                   <span>{text}</span>
                 </li>
               ))}
             </ul>
-            <div className="pt-2.5 border-t border-emerald-900/40 flex items-center justify-between text-xs font-bold">
-              <span className="text-slate-400">Maximum Score</span>
-              <span className="text-amber-300 flex items-center gap-1 font-mono">
-                <Trophy className="w-3.5 h-3.5" /> 6 Marks
-              </span>
+            <div className="pt-2.5 border-t border-emerald-900/45 flex items-center gap-2 text-xs font-bold text-amber-300">
+              <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Total: 6 Marks</span>
             </div>
           </div>
         </aside>
 
         {/* ─────── MAIN PANEL ─────── */}
-        <main key={activeNav} className="flex-1 min-w-0 space-y-4 animate-[fadeIn_180ms_ease-out]">
-
-          {/* ═══ DATASET EXPLORER VIEW ═══ */}
-          {activeNav === 'DATASET' && (
-            <section className="space-y-4">
-              <div className="rounded-2xl bg-[#03130a]/90 border border-emerald-900/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-                    <Database className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-white">Reference Dataset Explorer</h2>
-                    <p className="text-xs text-slate-400">Browse and search the official Round 3 CSV and JSON reference files</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {(['PREVIEW', 'SCHEMA'] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setDatasetSubTab(t)}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold border transition cursor-pointer ${
-                        datasetSubTab === t
-                          ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
-                          : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-emerald-700/50'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="lg:w-60 shrink-0 rounded-2xl bg-[#03130a]/90 border border-emerald-900/50 p-3 space-y-1">
-                  {datasetFiles.map((f) => {
-                    const def = DATASET_REGISTRY[f];
-                    const isJson = f.endsWith('.json');
-                    return (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => setSelectedDatasetFile(f)}
-                        className={`w-full flex items-center gap-2 p-2.5 rounded-xl text-left transition cursor-pointer border ${
-                          selectedDatasetFile === f
-                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200'
-                            : 'border-transparent hover:bg-emerald-950/40 text-slate-300'
-                        }`}
-                      >
-                        <FileSpreadsheet className={`w-3.5 h-3.5 shrink-0 ${isJson ? 'text-amber-400' : 'text-emerald-400'}`} />
-                        <div className="min-w-0">
-                          <div className="text-xs font-semibold truncate">{f}</div>
-                          <div className="text-[10px] text-slate-500 font-mono truncate">{def?.dfName}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex-1 min-w-0 rounded-2xl bg-[#03130a]/90 border border-emerald-900/50 p-4 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-bold text-white">{selectedDef?.title}</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">{selectedDef?.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                        <input
-                          type="text"
-                          placeholder="Search…"
-                          value={datasetSearch}
-                          onChange={(e) => setDatasetSearch(e.target.value)}
-                          className="pl-8 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none w-40"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = questionAndArenaService.getDatasetDownloadUrl(selectedDatasetFile);
-                          window.open(url, '_blank');
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs hover:border-emerald-700/50 transition cursor-pointer"
-                      >
-                        <Download className="w-3 h-3" /> Download
-                      </button>
-                    </div>
-                  </div>
-
-                  {datasetSubTab === 'PREVIEW' ? (
-                    <div className="overflow-x-auto rounded-xl border border-emerald-900/40">
-                      {isDatasetLoading ? (
-                        <div className="p-8 text-center">
-                          <Loader2 className="mx-auto w-5 h-5 text-emerald-400 animate-spin" />
-                        </div>
-                      ) : (
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="bg-emerald-950/60">
-                              {displayColumns.map((col) => (
-                                <th
-                                  key={col}
-                                  className="px-3 py-2 text-left font-mono font-bold text-emerald-400/80 uppercase tracking-wide border-b border-emerald-900/40 whitespace-nowrap"
-                                >
-                                  {col}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {displayRows.map((row, ri) => (
-                              <tr key={ri} className="border-b border-emerald-950/40 hover:bg-emerald-950/20 transition">
-                                {displayColumns.map((col) => (
-                                  <td key={col} className="px-3 py-2 font-mono text-slate-300 whitespace-nowrap">
-                                    {String(row[col] ?? '')}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto rounded-xl border border-emerald-900/40">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-emerald-950/60">
-                            {['Field', 'Type', 'Description'].map((h) => (
-                              <th
-                                key={h}
-                                className="px-3 py-2 text-left font-mono font-bold text-emerald-400/80 uppercase tracking-wide border-b border-emerald-900/40"
-                              >
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedDef?.fieldInfo.map((fi, ri) => (
-                            <tr key={ri} className="border-b border-emerald-950/40 hover:bg-emerald-950/20 transition">
-                              <td className="px-3 py-2 font-mono text-emerald-300 whitespace-nowrap">{fi.field}</td>
-                              <td className="px-3 py-2 font-mono text-amber-300/80 whitespace-nowrap">{fi.type}</td>
-                              <td className="px-3 py-2 text-slate-300">{fi.desc}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {backendDatasetData && backendDatasetData.totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] text-slate-500 font-mono">{backendDatasetData.totalRows} rows total</span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          disabled={datasetPage <= 1}
-                          onClick={() => setDatasetPage((p) => p - 1)}
-                          className="p-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 disabled:opacity-40 hover:border-emerald-700/50 cursor-pointer disabled:cursor-not-allowed transition"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-xs font-mono text-slate-300">
-                          {datasetPage} / {backendDatasetData.totalPages}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={datasetPage >= backendDatasetData.totalPages}
-                          onClick={() => setDatasetPage((p) => p + 1)}
-                          className="p-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 disabled:opacity-40 hover:border-emerald-700/50 cursor-pointer disabled:cursor-not-allowed transition"
-                        >
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
+        <main key={activeNav} className="flex-1 min-w-0 w-full space-y-4">
 
           {/* ═══ CASE VIEW (EXACTLY 2 QUESTIONS PER CASE) ═══ */}
-          {activeNav !== 'DATASET' && activeCase && (
+          {activeCase && (
             <section className="space-y-4">
-              {/* Case Header */}
-              <div className="rounded-2xl bg-[#03130a]/90 border border-emerald-900/50 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+              {/* Case Header Banner */}
+              <div className="rounded-2xl bg-[#03130a]/90 border border-emerald-900/55 px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-                    <BookOpen className="w-5 h-5 text-amber-400" />
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/12 border border-amber-500/35 flex items-center justify-center shrink-0">
+                    <FolderOpen className="w-4 h-4 text-amber-400" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-white tracking-tight">
+                    <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
                       {activeCase.caseTitle || `Case 0${activeCase.caseNumber}`}
                     </h2>
                     <p className="text-xs text-slate-400 mt-0.5">
@@ -1060,20 +709,21 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   {savedToast && (
                     <span className="text-[11px] font-mono text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
                       {savedToast}
                     </span>
                   )}
-                  <span className="px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 text-xs font-semibold">
-                    {activeCase.questions.length} Questions
-                  </span>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
-                    <Trophy className="w-3.5 h-3.5" /> {activeCase.totalMarks ?? 2} Marks
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#0a170c] border border-amber-500/40 text-amber-300 text-xs font-bold">
+                    <Layers className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{activeCase.questions.length} Questions</span>
+                    <span className="text-amber-500/50">|</span>
+                    <span>{activeCase.totalMarks ?? 2} Marks</span>
                   </span>
                   {isActiveCaseSubmitted && (
-                    <span className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-200 text-xs font-bold">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-200 text-xs font-bold">
                       <Lock className="w-3 h-3" /> Submitted
                     </span>
                   )}
@@ -1102,9 +752,9 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                       className="rounded-2xl bg-[#03130a]/95 border border-emerald-900/55 overflow-hidden shadow-xl"
                     >
                       {/* Question Header */}
-                      <div className="px-5 py-3.5 bg-[#04180d]/70 border-b border-emerald-900/40 flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-mono font-black text-xs">
+                      <div className="px-4 sm:px-5 py-3 bg-[#04190e]/75 border-b border-emerald-900/45 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 sm:gap-3">
+                          <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono font-black text-xs">
                             Q{q.orderNumber}
                           </span>
                           <h3 className="text-sm sm:text-[15px] font-bold text-white">{q.title}</h3>
@@ -1113,18 +763,20 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => toggleFlagQuestion(q.id)}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-mono transition cursor-pointer ${
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
                               flaggedQuestions[q.id]
-                                ? 'bg-amber-500/20 border-amber-400/50 text-amber-300'
-                                : 'bg-slate-900/80 border-slate-700/80 text-slate-400 hover:text-amber-300'
+                                ? 'bg-amber-500/20 border-amber-400/60 text-amber-300'
+                                : 'bg-[#020d07] border-emerald-900/60 text-slate-300 hover:border-amber-400/50 hover:text-amber-300'
                             }`}
                           >
                             <Flag className={`w-3 h-3 ${flaggedQuestions[q.id] ? 'fill-amber-400' : ''}`} />
                             <span>{flaggedQuestions[q.id] ? 'Flagged' : 'Flag'}</span>
                           </button>
-                          <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
+
+                          <span className="px-2.5 py-1 rounded-lg bg-[#0d190b] border border-amber-500/40 text-amber-300 font-mono text-[11px] font-bold">
                             {q.marks ?? 1} Mark
                           </span>
+
                           {q.isSubmitted ? (
                             <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-mono text-[11px] font-bold flex items-center gap-1">
                               <Lock className="w-3 h-3" /> Submitted
@@ -1137,32 +789,28 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                             <span className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-700/60 text-emerald-300 font-mono text-[11px]">
                               Saved ({chosen})
                             </span>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-400 font-mono text-[11px]">
-                              Unanswered
-                            </span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
 
-                      {/* Problem Statement + Neat Data Reference Panel */}
-                      <div className="px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start border-b border-emerald-950/60">
-                        <div className={hasFixture ? 'lg:col-span-6' : 'lg:col-span-12'}>
-                          <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+                      {/* Problem Statement + Structured Reference Data Panel */}
+                      <div className="px-4 sm:px-5 pt-4 pb-3 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                        <div className={hasFixture ? 'lg:col-span-5' : 'lg:col-span-12'}>
+                          <p className="text-xs sm:text-[13px] text-slate-200 leading-relaxed whitespace-pre-line">
                             {q.description || ''}
                           </p>
                         </div>
 
                         {hasFixture && (
-                          <div className="lg:col-span-6 rounded-xl bg-[#020b06] border border-emerald-900/50 overflow-hidden">
-                            <div className="px-3 py-1.5 bg-emerald-950/50 border-b border-emerald-900/40 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-emerald-300/80">
-                              <Table2 className="w-3 h-3 text-amber-400" />
-                              <span>{q.fixtureDescription || 'Reference Data'}</span>
+                          <div className="lg:col-span-7 rounded-xl bg-[#020b06] border border-emerald-900/55 overflow-hidden">
+                            <div className="px-3 py-1.5 bg-[#04180d] border-b border-emerald-900/45 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-emerald-300/85">
+                              <Table2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <span className="truncate">{q.fixtureDescription || 'Reference Data'}</span>
                             </div>
                             <div className="overflow-x-auto">
                               <table className="w-full text-xs">
                                 <thead>
-                                  <tr className="border-b border-emerald-900/30">
+                                  <tr className="border-b border-emerald-900/35">
                                     {fixtureCols.map((col) => (
                                       <th
                                         key={col}
@@ -1177,7 +825,7 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                                   {q.fixtureTable!.map((row, ri) => (
                                     <tr key={ri} className="border-b border-emerald-950/40 last:border-b-0">
                                       {fixtureCols.map((col) => (
-                                        <td key={col} className="px-3 py-1.5 font-mono text-xs text-slate-200 whitespace-nowrap">
+                                        <td key={col} className="px-3 py-1.5 font-mono text-xs text-slate-100 whitespace-nowrap">
                                           {String(row[col] ?? '')}
                                         </td>
                                       ))}
@@ -1191,7 +839,7 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                       </div>
 
                       {/* 2×2 Balanced Option Grid */}
-                      <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3.5 items-stretch">
+                      <div className="px-4 sm:px-5 pb-4 sm:pb-5 grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
                         {options.map((opt) => {
                           const isSelected = chosen === opt.key;
                           const disabled = q.isSubmitted || isLocked || isCompetitionPaused || isLockedByProctoring;
@@ -1202,52 +850,36 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                               disabled={disabled}
                               onClick={() => handleSelectOption(q, opt.key)}
                               aria-pressed={isSelected}
-                              className={`group text-left rounded-xl border p-3.5 transition-all flex flex-col gap-2.5 ${
+                              className={`group text-left rounded-xl border px-3.5 py-3 transition-all flex items-start gap-3 ${
                                 disabled ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
                               } ${
                                 isSelected
-                                  ? 'bg-emerald-500/[0.08] border-emerald-400 shadow-[0_0_22px_rgba(16,185,129,0.18)]'
-                                  : 'bg-[#020c06] border-emerald-900/55 hover:border-emerald-500/45 hover:bg-emerald-950/25'
+                                  ? 'bg-emerald-500/[0.09] border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.22)]'
+                                  : 'bg-[#020c06]/90 border-emerald-900/55 hover:border-emerald-500/45 hover:bg-emerald-950/25'
                               }`}
                             >
-                              {/* Option Top Bar: Radio + Clear A/B/C/D Label */}
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2.5">
-                                  {/* Radio Indicator */}
-                                  <span
-                                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition ${
-                                      isSelected
-                                        ? 'border-emerald-400 bg-emerald-500/20'
-                                        : 'border-slate-600 group-hover:border-emerald-500/60'
-                                    }`}
-                                  >
-                                    {isSelected && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
-                                  </span>
-
-                                  {/* Clear A/B/C/D Badge */}
-                                  <span
-                                    className={`px-2 py-0.5 rounded-md font-mono text-xs font-black border ${
-                                      isSelected
-                                        ? 'bg-emerald-400 text-slate-950 border-emerald-300'
-                                        : 'bg-emerald-950/70 text-emerald-300 border-emerald-800/70'
-                                    }`}
-                                  >
-                                    {opt.key}
-                                  </span>
-                                  <span className="text-xs font-semibold text-slate-300">
-                                    Option {opt.key}
-                                  </span>
-                                </div>
-
-                                {isSelected && (
-                                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded">
-                                    Selected
-                                  </span>
-                                )}
+                              {/* Radio + Letter Label */}
+                              <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                                <span
+                                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition ${
+                                    isSelected
+                                      ? 'border-emerald-400 bg-emerald-400/20 shadow-[0_0_8px_rgba(52,211,153,0.6)]'
+                                      : 'border-slate-600 group-hover:border-emerald-500/60'
+                                  }`}
+                                >
+                                  {isSelected && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
+                                </span>
+                                <span
+                                  className={`font-mono text-xs font-black ${
+                                    isSelected ? 'text-emerald-300' : 'text-slate-200'
+                                  }`}
+                                >
+                                  {opt.key}
+                                </span>
                               </div>
 
-                              {/* Dedicated Syntax-Highlighted Python Code Block */}
-                              <pre className="flex-1 font-mono text-[12px] text-slate-100 whitespace-pre-wrap break-words bg-[#010804] border border-emerald-950/80 rounded-lg p-3 overflow-x-auto">
+                              {/* Syntax-Highlighted Python Code Block */}
+                              <pre className="min-w-0 flex-1 font-mono text-[11.5px] sm:text-xs text-slate-100 whitespace-pre-wrap break-words overflow-x-auto">
                                 {highlightPython(opt.code || opt.label || '')}
                               </pre>
                             </button>
@@ -1259,50 +891,30 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                 })}
               </div>
 
-              {/* Clean Bottom Case Action Bar (non-overlapping, in-flow) */}
-              <div className="rounded-2xl bg-[#03130a]/95 border border-emerald-500/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                      isActiveCaseSubmitted
-                        ? 'bg-emerald-500/20 border-emerald-500/40'
-                        : 'bg-slate-900 border-slate-700/70'
-                    }`}
-                  >
-                    {isActiveCaseSubmitted ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <Send className="w-4 h-4 text-emerald-300" />
-                    )}
+              {/* Clean In-Flow Bottom Case Progress Footer */}
+              <div className="rounded-2xl bg-[#03130a]/95 border border-emerald-900/55 px-4 sm:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Target className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="text-xs font-semibold text-slate-200 whitespace-nowrap">
+                    Case 0{activeCase.caseNumber} Progress:{' '}
+                    <span className="font-mono text-emerald-300">
+                      {activeCaseAnsweredCount} / {activeCaseTotalCount} Answered
+                    </span>
                   </div>
-                  <div className="text-xs">
-                    {isActiveCaseSubmitted ? (
-                      <span className="text-emerald-300 font-semibold">
-                        Case 0{activeCase.caseNumber} is submitted and locked.
-                      </span>
-                    ) : (
-                      <>
-                        <div className="font-semibold text-slate-200">
-                          Case 0{activeCase.caseNumber} Progress:{' '}
-                          <span className="font-mono text-emerald-300">
-                            {activeCase.questions.filter((q) => Boolean(selectedOptions[q.id])).length} /{' '}
-                            {activeCase.questions.length} Answered
-                          </span>
-                        </div>
-                        <div className="text-slate-400 mt-0.5">
-                          Select one option for both questions, then submit Case 0{activeCase.caseNumber}.
-                        </div>
-                      </>
-                    )}
+                  <div className="hidden md:block flex-1 max-w-xs h-2 rounded-full bg-[#020b06] border border-emerald-900/50 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-300"
+                      style={{ width: `${activeCasePct}%` }}
+                    />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
                   {activeCase.caseNumber < 3 && (
                     <button
                       type="button"
                       onClick={() => handleSelectNav(`CASE_${activeCase.caseNumber + 1}` as NavTab)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold transition cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#04180d] hover:bg-[#062213] border border-emerald-800/60 text-slate-200 text-xs font-semibold transition cursor-pointer flex-1 sm:flex-initial"
                     >
                       <span>Next Case</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -1313,21 +925,21 @@ export const EventAnalyticsArenaPage: React.FC = () => {
                     type="button"
                     disabled={!isActiveCaseReadyToSubmit || submittingCaseNum === activeCase.caseNumber}
                     onClick={handleSubmitCase}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:from-slate-800 disabled:to-slate-800 text-slate-950 disabled:text-slate-500 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 disabled:shadow-none disabled:cursor-not-allowed transition cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 disabled:from-emerald-950 disabled:to-emerald-950 disabled:border disabled:border-emerald-900/50 text-slate-950 disabled:text-emerald-500/50 font-bold text-xs shadow-[0_0_16px_rgba(16,185,129,0.25)] disabled:shadow-none disabled:cursor-not-allowed transition cursor-pointer flex-1 sm:flex-initial"
                   >
                     {submittingCaseNum === activeCase.caseNumber ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         <span>Submitting…</span>
                       </>
                     ) : isActiveCaseSubmitted ? (
                       <>
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Case 0{activeCase.caseNumber} Submitted</span>
                       </>
                     ) : (
                       <>
-                        <Send className="w-4 h-4" />
+                        <Send className="w-3.5 h-3.5" />
                         <span>Submit Case 0{activeCase.caseNumber}</span>
                       </>
                     )}
@@ -1359,6 +971,7 @@ export const EventAnalyticsArenaPage: React.FC = () => {
           )}
         </main>
       </div>
+      )}
 
       {/* ═══════════════════════════ MODALS ═══════════════════════════ */}
       {showFinalModal && (

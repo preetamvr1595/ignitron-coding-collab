@@ -1,14 +1,11 @@
 /**
  * IGNITRON 2K26 — Round 3: Python Code Tracing Challenge
- * 6 Python Code-Reading & Output-Prediction MCQs · 1 Mark Each · 6 Marks Total · No Negative Marking
+ * VERSION 3 — Authoritative question set matching the official question paper.
  *
- * Reference Dataset: round3_reference_dataset_v2 (IGNITRON_Round3_Reference_Dataset.json)
- * - Q1: Calculate Total Score – P101 (Correct: A -> 207.4)
- * - Q2: Find Highest-Scoring Participant (Correct: B -> P196)
- * - Q3: Count Accepted Submissions (Correct: C -> 302)
- * - Q4: Identify Duplicate Submission IDs (Correct: C -> 0)
- * - Q5: Find Highest-Ranked Team (Correct: C -> Syntax Ninjas)
- * - Q6: Apply Team Ranking (Correct: C -> T148)
+ * 6 MCQs · 1 Mark Each · 6 Marks Total · No Negative Marking
+ * Answer key: Q1=A(207.4), Q2=B(P196), Q3=C(302), Q4=C(0), Q5=C(Syntax Ninjas), Q6=C(T148)
+ *
+ * NEVER expose correctOptionKey to participant-facing APIs.
  */
 
 export interface Round3QuestionOption {
@@ -30,7 +27,7 @@ export interface Round3TestCase {
 
 export interface Round3QuestionConfig {
   id: string;
-  orderNumber: number; // 1 to 6
+  orderNumber: number;
   caseNumber: 1 | 2 | 3;
   caseTitle: string;
   title: string;
@@ -57,59 +54,60 @@ export const ROUND3_CODE_QUALITY_RUBRIC = {
 };
 
 export const ROUND3_QUESTIONS_CONFIG: Round3QuestionConfig[] = [
-  // ----------------------------------------------------------------------------
-  // CASE 01: PARTICIPANT SCORING & TRACING (2 MARKS)
-  // ----------------------------------------------------------------------------
+  // ============================================================
+  // CASE 01 – DATA FUNDAMENTALS   (2 questions · 2 marks)
+  // ============================================================
   {
     id: 'R3_Q1_TOTAL_SCORE_P101',
     orderNumber: 1,
     caseNumber: 1,
-    caseTitle: 'Case 01 – Participant Score Tracing',
-    title: 'Q1. Calculate Total Score – P101',
+    caseTitle: 'Case 01 – Data Fundamentals',
+    title: 'Q1. Calculate Total Score',
     difficulty: 'EASY',
     marks: 1,
     format: 'SELECT_CODE',
-    technology: 'Python Code Tracing',
-    concept: 'Row Filtering & Sum Aggregation',
+    technology: 'Python',
+    concept: 'List sum aggregation',
     targetDataset: 'participants.csv',
-    description: `Trace the Python snippet below against \`participants.csv\` (100 participants).
-For participant **P101** (Akash Patel: Round 1 = \`25.4\`, Round 2 = \`87.4\`, Round 3 = \`94.6\`), select the option where **both the Python code and the printed output are correct**.`,
+    description: `Participant P101 (Akash Patel) has the following scores:
+• Round 1: 25.4
+• Round 2: 87.4
+• Round 3: 94.6
+
+Which code correctly calculates the total score?`,
+    fixtureDescription: 'Scores list for P101 (Akash Patel)',
     options: [
       {
         key: 'A',
         label: 'Option A',
-        code: `row = df[df["participant_id"] == "P101"].iloc[0]
-total = round(row["round_1_score"] + row["round_2_score"] + row["round_3_score"], 1)
-print(total)
+        code: `scores = [25.4, 87.4, 94.6]
+print(sum(scores))
 # Output: 207.4`,
-        explanation: 'Correct. Filters P101 and sums round_1_score (25.4) + round_2_score (87.4) + round_3_score (94.6) = 207.4.',
+        explanation: 'Correct. sum() adds 25.4 + 87.4 + 94.6 = 207.4.',
       },
       {
         key: 'B',
         label: 'Option B',
-        code: `row = df[df["participant_id"] == "P101"].iloc[0]
-total = round(row["round_1_score"] + row["round_2_score"], 1)
-print(total)
-# Output: 112.8`,
-        explanation: 'Incorrect. Omits round_3_score from total score calculation.',
+        code: `scores = [25.4, 87.4, 94.6]
+print(max(scores))
+# Output: 94.6`,
+        explanation: 'Incorrect. max() returns the largest element (94.6), not the total.',
       },
       {
         key: 'C',
         label: 'Option C',
-        code: `row = df[df["participant_id"] == "P101"].iloc[0]
-total = round(row["round_2_score"] + row["round_3_score"], 1)
-print(total)
-# Output: 207.4`,
-        explanation: 'Incorrect. Code omits round_1_score so its output would be 182.0, not 207.4.',
+        code: `scores = [25.4, 87.4, 94.6]
+print(len(scores))
+# Output: 3`,
+        explanation: 'Incorrect. len() returns the number of elements (3), not the total.',
       },
       {
         key: 'D',
         label: 'Option D',
-        code: `row = df[df["participant_id"] == "P102"].iloc[0]
-total = round(row["round_1_score"] + row["round_2_score"] + row["round_3_score"], 1)
-print(total)
-# Output: 207.4`,
-        explanation: 'Incorrect. Filters P102 instead of P101.',
+        code: `scores = [25.4, 87.4, 94.6]
+print(sum(scores) / 3)
+# Output: 69.13333333333333`,
+        explanation: 'Incorrect. Dividing by 3 gives the average, not the total.',
       },
     ],
     correctOptionKey: 'A',
@@ -122,48 +120,76 @@ print(total)
     id: 'R3_Q2_HIGHEST_PARTICIPANT',
     orderNumber: 2,
     caseNumber: 1,
-    caseTitle: 'Case 01 – Participant Score Tracing',
-    title: 'Q2. Find Highest-Scoring Participant',
+    caseTitle: 'Case 01 – Data Fundamentals',
+    title: 'Q2. Find the Highest-Scoring Participant',
     difficulty: 'EASY',
     marks: 1,
     format: 'SELECT_CODE',
-    technology: 'Python Code Tracing',
-    concept: 'idxmax() & Maximum Record Lookup',
+    technology: 'Python',
+    concept: 'max() with key on dict',
     targetDataset: 'participants.csv',
-    description: `Trace the Python snippet against \`participants.csv\` to identify the participant with the highest \`total_score\` (Neha Singh, \`217.2\`).
-Select the option where **both the Python code and the printed output are correct**.`,
+    description: `The total scores of four participants are given below.
+
+Which code correctly finds the participant with the highest score?`,
+    fixtureDescription: 'Participant scores dictionary',
+    fixtureTable: [
+      { participant: 'P101', total_score: 207.4 },
+      { participant: 'P170', total_score: 216.1 },
+      { participant: 'P185', total_score: 208.9 },
+      { participant: 'P196', total_score: 217.2 },
+    ],
     options: [
       {
         key: 'A',
         label: 'Option A',
-        code: `top = df.loc[df["total_score"].idxmin()]
-print(top["participant_id"])
-# Output: P196`,
-        explanation: 'Incorrect. idxmin() returns the lowest-scoring participant, not the highest.',
+        code: `scores = {
+    "P101": 207.4,
+    "P170": 216.1,
+    "P185": 208.9,
+    "P196": 217.2
+}
+print(min(scores, key=scores.get))
+# Output: P101`,
+        explanation: 'Incorrect. min() returns the participant with the lowest score (P101).',
       },
       {
         key: 'B',
         label: 'Option B',
-        code: `top = df.loc[df["total_score"].idxmax()]
-print(top["participant_id"])
+        code: `scores = {
+    "P101": 207.4,
+    "P170": 216.1,
+    "P185": 208.9,
+    "P196": 217.2
+}
+print(max(scores, key=scores.get))
 # Output: P196`,
-        explanation: 'Correct. idxmax() on total_score locates P196 (Neha Singh, 217.2).',
+        explanation: 'Correct. max(scores, key=scores.get) returns the key with the highest value: P196 (217.2).',
       },
       {
         key: 'C',
         label: 'Option C',
-        code: `top = df.sort_values("total_score", ascending=True).iloc[0]
-print(top["participant_id"])
-# Output: P196`,
-        explanation: 'Incorrect. ascending=True sorts lowest first.',
+        code: `scores = {
+    "P101": 207.4,
+    "P170": 216.1,
+    "P185": 208.9,
+    "P196": 217.2
+}
+print(max(scores.values()))
+# Output: 217.2`,
+        explanation: 'Incorrect. max(scores.values()) returns the highest score value (217.2), not the participant ID.',
       },
       {
         key: 'D',
         label: 'Option D',
-        code: `top = df.loc[df["round_1_score"].idxmax()]
-print(top["participant_id"])
-# Output: P101`,
-        explanation: 'Incorrect. Checks round_1_score instead of total_score and prints P101.',
+        code: `scores = {
+    "P101": 207.4,
+    "P170": 216.1,
+    "P185": 208.9,
+    "P196": 217.2
+}
+print(sum(scores.values()))
+# Output: 849.6`,
+        explanation: 'Incorrect. sum() returns the total of all scores (849.6), not the top participant.',
       },
     ],
     correctOptionKey: 'B',
@@ -173,55 +199,73 @@ print(top["participant_id"])
     hiddenTestCases: [],
   },
 
-  // ----------------------------------------------------------------------------
-  // CASE 02: SUBMISSION LOG TRACING (2 MARKS)
-  // ----------------------------------------------------------------------------
+  // ============================================================
+  // CASE 02 – DATA INTEGRITY   (2 questions · 2 marks)
+  // ============================================================
   {
     id: 'R3_Q3_COUNT_ACCEPTED',
     orderNumber: 3,
     caseNumber: 2,
-    caseTitle: 'Case 02 – Submission Audit Tracing',
+    caseTitle: 'Case 02 – Data Integrity',
     title: 'Q3. Count Accepted Submissions',
     difficulty: 'EASY',
     marks: 1,
     format: 'SELECT_CODE',
-    technology: 'Python Code Tracing',
-    concept: 'Status Filtering & Count Extraction',
+    technology: 'Python',
+    concept: 'Dictionary lookup by key',
     targetDataset: 'submission_status_summary.csv',
-    description: `Trace the Python snippet against \`submission_status_summary.csv\` (1,000 total submissions across 5 statuses).
-Select the option where **both the Python code and the printed output are correct**.`,
+    description: `The dataset contains 1,000 submission records, including 302 ACCEPTED submissions.
+
+Which code correctly prints the number of accepted submissions?`,
+    fixtureDescription: 'Submission status count dictionary',
+    fixtureTable: [
+      { status: 'ACCEPTED', count: 302 },
+      { status: 'WRONG_ANSWER', count: 192 },
+    ],
     options: [
       {
         key: 'A',
         label: 'Option A',
-        code: `accepted = summary.loc[summary["execution_status"] == "WRONG_ANSWER", "count"].iloc[0]
-print(int(accepted))
-# Output: 302`,
-        explanation: 'Incorrect. Filters WRONG_ANSWER (192) instead of ACCEPTED.',
+        code: `status_count = {
+    "ACCEPTED": 302,
+    "WRONG_ANSWER": 192
+}
+print(status_count["WRONG_ANSWER"])
+# Output: 192`,
+        explanation: 'Incorrect. Looks up WRONG_ANSWER (192) instead of ACCEPTED.',
       },
       {
         key: 'B',
         label: 'Option B',
-        code: `accepted = summary["count"].sum()
-print(int(accepted))
-# Output: 302`,
-        explanation: 'Incorrect. Sums all 1000 submissions instead of filtering ACCEPTED.',
+        code: `status_count = {
+    "ACCEPTED": 302,
+    "WRONG_ANSWER": 192
+}
+print(len(status_count))
+# Output: 2`,
+        explanation: 'Incorrect. len() counts the number of keys in the dict (2), not the ACCEPTED count.',
       },
       {
         key: 'C',
         label: 'Option C',
-        code: `accepted = summary.loc[summary["execution_status"] == "ACCEPTED", "count"].iloc[0]
-print(int(accepted))
+        code: `status_count = {
+    "ACCEPTED": 302,
+    "WRONG_ANSWER": 192
+}
+print(status_count["ACCEPTED"])
 # Output: 302`,
-        explanation: 'Correct. Filters execution_status == "ACCEPTED" and prints 302.',
+        explanation: 'Correct. Directly accesses the "ACCEPTED" key and prints 302.',
       },
       {
         key: 'D',
         label: 'Option D',
-        code: `accepted = summary.loc[summary["execution_status"] == "ACCEPTED", "count"].iloc[0]
-print(int(accepted))
-# Output: 192`,
-        explanation: 'Incorrect. Predicted output 192 is wrong (ACCEPTED count is 302).',
+        code: `status_count = {
+    "ACCEPTED": 302,
+    "WRONG_ANSWER": 192
+}
+print(sum(status_count.values()))
+# Output: 494`,
+        explanation: 'Incorrect. sum() adds 302 + 192 = 494, not just the ACCEPTED count.',
       },
     ],
     correctOptionKey: 'C',
@@ -234,48 +278,56 @@ print(int(accepted))
     id: 'R3_Q4_DUPLICATE_SUBMISSION_IDS',
     orderNumber: 4,
     caseNumber: 2,
-    caseTitle: 'Case 02 – Submission Audit Tracing',
+    caseTitle: 'Case 02 – Data Integrity',
     title: 'Q4. Identify Duplicate Submission IDs',
     difficulty: 'EASY',
     marks: 1,
     format: 'SELECT_CODE',
-    technology: 'Python Code Tracing',
-    concept: 'Duplicate Detection with duplicated().sum()',
+    technology: 'Python',
+    concept: 'Set-based duplicate detection',
     targetDataset: 'submission_ids.csv',
-    description: `Trace the Python snippet against \`submission_ids.csv\` (1,000 submission IDs from \`SUB_10001\` to \`SUB_11000\`).
-Select the option where **both the Python code and the printed output are correct**.`,
+    description: `The dataset contains 1,000 submission records and no duplicate submission IDs.
+
+Which code correctly calculates the number of duplicate IDs?`,
+    fixtureDescription: 'Sample submission IDs list',
+    fixtureTable: [
+      { submission_id: 'SUB1' },
+      { submission_id: 'SUB2' },
+      { submission_id: 'SUB3' },
+      { submission_id: 'SUB4' },
+    ],
     options: [
       {
         key: 'A',
         label: 'Option A',
-        code: `dup_count = int(ids["submission_id"].nunique())
-print(dup_count)
-# Output: 0`,
-        explanation: 'Incorrect. nunique() returns 1000, not 0.',
+        code: `ids = ["SUB1", "SUB2", "SUB3", "SUB4"]
+print(len(ids))
+# Output: 4`,
+        explanation: 'Incorrect. len(ids) counts all elements (4), not duplicates.',
       },
       {
         key: 'B',
         label: 'Option B',
-        code: `dup_count = int(ids["submission_id"].duplicated().sum())
-print(dup_count)
-# Output: 1000`,
-        explanation: 'Incorrect. Output 1000 is wrong; all 1000 IDs are unique.',
+        code: `ids = ["SUB1", "SUB2", "SUB3", "SUB4"]
+print(len(set(ids)))
+# Output: 4`,
+        explanation: 'Incorrect. len(set(ids)) gives the number of unique IDs (4), not the duplicate count.',
       },
       {
         key: 'C',
         label: 'Option C',
-        code: `dup_count = int(ids["submission_id"].duplicated().sum())
-print(dup_count)
+        code: `ids = ["SUB1", "SUB2", "SUB3", "SUB4"]
+print(len(ids) - len(set(ids)))
 # Output: 0`,
-        explanation: 'Correct. duplicated().sum() counts duplicate submission_id values, returning 0.',
+        explanation: 'Correct. len(ids) - len(set(ids)) = 4 - 4 = 0 duplicates.',
       },
       {
         key: 'D',
         label: 'Option D',
-        code: `dup_count = len(ids) - int(ids["submission_id"].isna().sum())
-print(dup_count)
-# Output: 0`,
-        explanation: 'Incorrect. Computes non-null count (1000), not duplicates.',
+        code: `ids = ["SUB1", "SUB2", "SUB3", "SUB4"]
+print(len(ids) + len(set(ids)))
+# Output: 8`,
+        explanation: 'Incorrect. Adding 4 + 4 = 8 has no meaningful interpretation.',
       },
     ],
     correctOptionKey: 'C',
@@ -285,55 +337,81 @@ print(dup_count)
     hiddenTestCases: [],
   },
 
-  // ----------------------------------------------------------------------------
-  // CASE 03: TEAM LEADERBOARD & RANKING TRACING (2 MARKS)
-  // ----------------------------------------------------------------------------
+  // ============================================================
+  // CASE 03 – ANALYTICAL INTELLIGENCE   (2 questions · 2 marks)
+  // ============================================================
   {
     id: 'R3_Q5_HIGHEST_RANKED_TEAM',
     orderNumber: 5,
     caseNumber: 3,
-    caseTitle: 'Case 03 – Team Leaderboard Tracing',
-    title: 'Q5. Find Highest-Ranked Team',
+    caseTitle: 'Case 03 – Analytical Intelligence',
+    title: 'Q5. Find the Highest-Ranked Team',
     difficulty: 'MEDIUM',
     marks: 1,
     format: 'SELECT_CODE',
-    technology: 'Python Code Tracing',
-    concept: 'Descending Sort & Top Team Name Extraction',
+    technology: 'Python',
+    concept: 'max() with key on dict',
     targetDataset: 'team_leaderboard.csv',
-    description: `Trace the Python snippet against \`team_leaderboard.csv\` (50 teams; Rank 1 has \`total_score = 425.6\`).
-Select the option where **both the Python code and the printed output are correct**.`,
+    description: `Which code correctly finds the team with the highest total score?`,
+    fixtureDescription: 'Team total scores dictionary',
+    fixtureTable: [
+      { team: 'Syntax Ninjas', total_score: 425.6 },
+      { team: 'Recursion Crusaders', total_score: 402.6 },
+      { team: 'Code Architects', total_score: 388.9 },
+      { team: 'Omega Wolves', total_score: 384.8 },
+    ],
     options: [
       {
         key: 'A',
         label: 'Option A',
-        code: `best = leaderboard.sort_values("total_score", ascending=True).iloc[0]
-print(best["team_name"])
-# Output: Syntax Ninjas`,
-        explanation: 'Incorrect. ascending=True picks the lowest-ranked team (Nexus Hunters).',
+        code: `teams = {
+    "Syntax Ninjas": 425.6,
+    "Recursion Crusaders": 402.6,
+    "Code Architects": 388.9,
+    "Omega Wolves": 384.8
+}
+print(min(teams, key=teams.get))
+# Output: Omega Wolves`,
+        explanation: 'Incorrect. min() returns the team with the lowest score (Omega Wolves).',
       },
       {
         key: 'B',
         label: 'Option B',
-        code: `best = leaderboard.sort_values("round_3_score", ascending=False).iloc[0]
-print(best["team_name"])
-# Output: Syntax Ninjas`,
-        explanation: 'Incorrect. Sorting by round_3_score puts Code Architects (180.6) first, not Syntax Ninjas (176.7).',
+        code: `teams = {
+    "Syntax Ninjas": 425.6,
+    "Recursion Crusaders": 402.6,
+    "Code Architects": 388.9,
+    "Omega Wolves": 384.8
+}
+print(max(teams.values()))
+# Output: 425.6`,
+        explanation: 'Incorrect. max(teams.values()) returns the highest score value (425.6), not the team name.',
       },
       {
         key: 'C',
         label: 'Option C',
-        code: `best = leaderboard.sort_values("total_score", ascending=False).iloc[0]
-print(best["team_name"])
+        code: `teams = {
+    "Syntax Ninjas": 425.6,
+    "Recursion Crusaders": 402.6,
+    "Code Architects": 388.9,
+    "Omega Wolves": 384.8
+}
+print(max(teams, key=teams.get))
 # Output: Syntax Ninjas`,
-        explanation: 'Correct. Sorting by total_score descending places T148 (Syntax Ninjas, 425.6) at index 0.',
+        explanation: 'Correct. max(teams, key=teams.get) returns the key with the highest value: Syntax Ninjas (425.6).',
       },
       {
         key: 'D',
         label: 'Option D',
-        code: `best = leaderboard.sort_values("total_score", ascending=False).iloc[1]
-print(best["team_name"])
-# Output: Syntax Ninjas`,
-        explanation: 'Incorrect. iloc[1] selects rank 2 (Recursion Crusaders), not rank 1.',
+        code: `teams = {
+    "Syntax Ninjas": 425.6,
+    "Recursion Crusaders": 402.6,
+    "Code Architects": 388.9,
+    "Omega Wolves": 384.8
+}
+print(sum(teams.values()))
+# Output: 1601.9`,
+        explanation: 'Incorrect. sum() returns the total of all team scores (1601.9).',
       },
     ],
     correctOptionKey: 'C',
@@ -346,60 +424,75 @@ print(best["team_name"])
     id: 'R3_Q6_APPLY_TEAM_RANKING',
     orderNumber: 6,
     caseNumber: 3,
-    caseTitle: 'Case 03 – Team Leaderboard Tracing',
+    caseTitle: 'Case 03 – Analytical Intelligence',
     title: 'Q6. Apply Team Ranking',
     difficulty: 'MEDIUM',
     marks: 1,
     format: 'SELECT_CODE',
-    technology: 'Python Code Tracing',
-    concept: 'Multi-Key Tie-Break Ranking & Top Team ID',
+    technology: 'Python',
+    concept: 'Sort with reverse=True on tuple list',
     targetDataset: 'team_round_scores.csv',
-    description: `Trace the Python snippet against \`team_round_scores.csv\` (50 teams) applying ranking by \`total_score\`, then \`round_3_score\`, then \`round_2_score\` descending.
-Select the option where **both the Python code and the printed output are correct**.`,
+    description: `The records contain team ID, total score, Round 3 score and Round 2 score.
+
+Which code correctly sorts teams by total score in descending order?`,
+    fixtureDescription: 'Teams as list of tuples: (team_id, total, round3, round2)',
+    fixtureTable: [
+      { team_id: 'T148', total_score: 425.6, round3_score: 176.7, round2_score: 197.9 },
+      { team_id: 'T147', total_score: 402.6, round3_score: 172.0, round2_score: 179.3 },
+      { team_id: 'T118', total_score: 388.9, round3_score: 180.6, round2_score: 161.4 },
+    ],
     options: [
       {
         key: 'A',
         label: 'Option A',
-        code: `ranked = scores.sort_values(
-    by=["total_score", "round_3_score", "round_2_score"],
-    ascending=[True, True, True]
-).reset_index(drop=True)
-print(ranked.loc[0, "team_id"])
-# Output: T148`,
-        explanation: 'Incorrect. ascending=[True, True, True] places the lowest team (T102) at index 0.',
+        code: `teams = [
+    ("T148", 425.6, 176.7, 197.9),
+    ("T147", 402.6, 172.0, 179.3),
+    ("T118", 388.9, 180.6, 161.4)
+]
+teams.sort(key=lambda x: x[1])
+print(teams[0][0])
+# Output: T118`,
+        explanation: 'Incorrect. Without reverse=True, sort is ascending; teams[0] is the lowest-scoring team (T118).',
       },
       {
         key: 'B',
         label: 'Option B',
-        code: `ranked = scores.sort_values(
-    by=["round_3_score", "total_score", "round_2_score"],
-    ascending=[False, False, False]
-).reset_index(drop=True)
-print(ranked.loc[0, "team_id"])
-# Output: T148`,
-        explanation: 'Incorrect. Primary key round_3_score puts T118 (180.6) ahead of T148 (176.7).',
+        code: `teams = [
+    ("T148", 425.6, 176.7, 197.9),
+    ("T147", 402.6, 172.0, 179.3),
+    ("T118", 388.9, 180.6, 161.4)
+]
+teams.sort(key=lambda x: x[2], reverse=True)
+print(teams[0][0])
+# Output: T118`,
+        explanation: 'Incorrect. Sorting by x[2] (round3 score) puts T118 (180.6) first, not T148.',
       },
       {
         key: 'C',
         label: 'Option C',
-        code: `ranked = scores.sort_values(
-    by=["total_score", "round_3_score", "round_2_score"],
-    ascending=[False, False, False]
-).reset_index(drop=True)
-print(ranked.loc[0, "team_id"])
+        code: `teams = [
+    ("T148", 425.6, 176.7, 197.9),
+    ("T147", 402.6, 172.0, 179.3),
+    ("T118", 388.9, 180.6, 161.4)
+]
+teams.sort(key=lambda x: x[1], reverse=True)
+print(teams[0][0])
 # Output: T148`,
-        explanation: 'Correct. Sorts descending by total_score -> round_3_score -> round_2_score, placing T148 at rank 1.',
+        explanation: 'Correct. Sorts by total score (x[1]) descending; T148 (425.6) is at index 0.',
       },
       {
         key: 'D',
         label: 'Option D',
-        code: `ranked = scores.sort_values(
-    by=["total_score", "round_3_score", "round_2_score"],
-    ascending=[False, False, False]
-).reset_index(drop=True)
-print(ranked.loc[0, "team_id"])
-# Output: T147`,
-        explanation: 'Incorrect. Rank 1 team_id is T148 (Syntax Ninjas), while T147 is rank 2.',
+        code: `teams = [
+    ("T148", 425.6, 176.7, 197.9),
+    ("T147", 402.6, 172.0, 179.3),
+    ("T118", 388.9, 180.6, 161.4)
+]
+teams.sort(key=lambda x: x[3])
+print(teams[0][0])
+# Output: T118`,
+        explanation: 'Incorrect. Sorting by x[3] (round2 score) ascending puts T118 first.',
       },
     ],
     correctOptionKey: 'C',

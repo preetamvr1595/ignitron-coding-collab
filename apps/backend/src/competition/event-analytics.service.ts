@@ -109,12 +109,14 @@ export class EventAnalyticsService implements OnModuleInit {
     this.logger.log(`Syncing ${ROUND3_QUESTIONS_CONFIG.length} official Round 3 Python Code Tracing Challenge questions...`);
 
     const activeTitles = ROUND3_QUESTIONS_CONFIG.map((q) => q.title);
-    // Preserve historical Round 3 questions and submissions by deactivating superseded questions
-    // and shifting their orderNumber (+100) so (roundId, orderNumber) remains unique for active Q1-Q6.
+    const activeOrderNumbers = ROUND3_QUESTIONS_CONFIG.map((q) => q.orderNumber);
+
+    // Deactivate any Round 3 question whose title AND orderNumber are both not in the active set
     const legacyQuestions = await this.prisma.question.findMany({
       where: {
         roundId: round3.id,
         title: { notIn: activeTitles },
+        orderNumber: { notIn: activeOrderNumbers },
       },
       select: { id: true, orderNumber: true, isActive: true },
     });
@@ -132,12 +134,24 @@ export class EventAnalyticsService implements OnModuleInit {
     }
 
     for (const qConfig of ROUND3_QUESTIONS_CONFIG) {
-      const existing = await this.prisma.question.findFirst({
+      // Match by exact title first; fallback to active question at the same orderNumber
+      let existing = await this.prisma.question.findFirst({
         where: {
           roundId: round3.id,
           title: qConfig.title,
         },
       });
+
+      if (!existing) {
+        // Fallback: find any active question at this orderNumber (title may have changed between versions)
+        existing = await this.prisma.question.findFirst({
+          where: {
+            roundId: round3.id,
+            orderNumber: qConfig.orderNumber,
+            isActive: true,
+          },
+        });
+      }
 
       const optionsData = qConfig.options.map((opt) => ({
         key: opt.key,

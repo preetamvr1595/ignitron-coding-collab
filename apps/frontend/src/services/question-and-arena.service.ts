@@ -32,10 +32,15 @@ export const questionAndArenaService = {
   // --------------------------------------------------------------------------
   // ADMIN QUESTIONS
   // --------------------------------------------------------------------------
-  async listAdminQuestions(roundNumber?: number, type?: string): Promise<QuestionDto[]> {
+  async listAdminQuestions(
+    roundNumber?: number,
+    type?: string,
+    includeInactive = false,
+  ): Promise<QuestionDto[]> {
     const params = new URLSearchParams();
     if (roundNumber) params.append('roundNumber', roundNumber.toString());
     if (type) params.append('type', type);
+    if (includeInactive) params.append('includeInactive', 'true');
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
     const res = await apiClient<ApiResponseWrapper<QuestionDto[]>>(

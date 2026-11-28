@@ -62,10 +62,12 @@ export class QuestionsController {
   async listAdminQuestions(
     @Query('roundNumber') roundNumber?: string,
     @Query('type') type?: string,
+    @Query('includeInactive') includeInactive?: string,
   ) {
     const rNum = roundNumber ? parseInt(roundNumber, 10) : undefined;
     const qType = type ? (type.toUpperCase() as QuestionType) : undefined;
-    const data = await this.questionsService.listAdminQuestions(rNum, qType);
+    const showInactive = includeInactive === 'true';
+    const data = await this.questionsService.listAdminQuestions(rNum, qType, showInactive);
     return { success: true, data };
   }
 

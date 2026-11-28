@@ -30,6 +30,7 @@ import {
 
 export const QuestionManagementPage: React.FC = () => {
   const [activeRound, setActiveRound] = useState<number>(1);
+  const [includeArchived, setIncludeArchived] = useState<boolean>(false);
   const [questions, setQuestions] = useState<QuestionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
@@ -78,7 +79,7 @@ export const QuestionManagementPage: React.FC = () => {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const data = await questionAndArenaService.listAdminQuestions(activeRound);
+      const data = await questionAndArenaService.listAdminQuestions(activeRound, undefined, includeArchived);
       setQuestions(data);
     } catch (err: any) {
       setFeedback({ type: 'error', message: err?.message || 'Failed to load questions.' });
@@ -89,7 +90,7 @@ export const QuestionManagementPage: React.FC = () => {
 
   useEffect(() => {
     fetchQuestions();
-  }, [activeRound]);
+  }, [activeRound, includeArchived]);
 
   const handleSeedQuestions = async () => {
     if (!confirm('Populate the default official question bank for IGNITRON 2K26? (15 MCQs for Round 1, Bug Hunt problem for Round 2, and 3 Cases for Round 3).')) {
@@ -542,8 +543,21 @@ export const QuestionManagementPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-              <span>Showing {questions.length} questions for Round {activeRound}</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 px-1">
+              <div className="flex items-center gap-3">
+                <span>
+                  Showing {questions.length} {includeArchived ? 'total' : 'active'} questions for Round {activeRound}
+                </span>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-medium text-slate-500 hover:text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>Show Archived</span>
+                </label>
+              </div>
               <span className="font-mono font-medium">
                 {activeRound === 2
                   ? `Configured Missions: ${questions.length} (Published: ${questions.filter((q) => q.isActive).length})`

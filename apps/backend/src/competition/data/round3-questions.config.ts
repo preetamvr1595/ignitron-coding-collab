@@ -75,7 +75,10 @@ export const ROUND3_QUESTIONS_CONFIG: Round3QuestionConfig[] = [
 • Round 3: 94.6
 
 Which code correctly calculates the total score?`,
-    fixtureDescription: 'Scores list for P101 (Akash Patel)',
+    fixtureDescription: 'Participant P101 (Akash Patel) round scores',
+    fixtureTable: [
+      { participant_id: 'P101', name: 'Akash Patel', round_1: 25.4, round_2: 87.4, round_3: 94.6 },
+    ],
     options: [
       {
         key: 'A',

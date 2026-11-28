@@ -268,8 +268,11 @@ export const McqArenaPage: React.FC = () => {
   };
 
   const currentQuestion = questions[currentIndex];
-  const answeredCount = Object.values(answers).filter((a) => a.selectedOption !== null).length;
-  const flaggedCount = Object.values(answers).filter((a) => a.isFlagged).length;
+  const answeredCount = questions.filter((q) => {
+    const sel = answers[q.id]?.selectedOption;
+    return sel !== null && sel !== undefined;
+  }).length;
+  const flaggedCount = questions.filter((q) => Boolean(answers[q.id]?.isFlagged)).length;
   const unansweredCount = Math.max(0, questions.length - answeredCount);
 
   if (loading) {

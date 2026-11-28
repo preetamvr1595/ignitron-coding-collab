@@ -305,11 +305,14 @@ export class ArenaService {
       rubric: (q.rubric as any) || null,
     }));
 
-    // Fetch team's saved answers (use explicit field selection to remain resilient if schema is migrating)
+    // Fetch team's saved answers scoped strictly to active Round 1 questions
     let savedAnswers: Array<{ questionId: string; selectedOption: number | null; isFlagged: boolean }> = [];
     try {
       savedAnswers = await this.prisma.teamMcqAnswer.findMany({
-        where: { teamId: teamUser.id },
+        where: {
+          teamId: teamUser.id,
+          question: { roundId: round.id, isActive: true },
+        },
         select: {
           questionId: true,
           selectedOption: true,
